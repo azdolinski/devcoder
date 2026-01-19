@@ -1,0 +1,115 @@
+# -> https://github.com/linuxserver/docker-baseimage-selkies
+#   -> https://github.com/linuxserver/docker-vscodium
+# 
+# proot-apps install filezilla - portable applications installed to the user's persistent $HOME directory
+
+services:
+  devcoder:
+    hostname: devcoder
+    container_name: devcoder
+    build:
+      context: .
+      dockerfile: Dockerfile
+    cap_add:
+      - IPC_LOCK              # Required for keyring functionality.
+    security_opt:
+      - seccomp:unconfined    # Allows all syscalls (fixes GUI compatibility issues)
+    privileged: true          # required for docker-in-docker
+                              # containers with --privileged are not secure, because all security options that containers provide are disabled, 
+                              # and because of that can take full root control of the host. Only use --privileged in exceptional situations.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DEBUG_DEVCODER: ${DEBUG_DEVCODER:-true}
+      TZ: ${TZ:-Etc/UTC}
+      CUSTOM_USER: ${CUSTOM_USER:-devcoder}               # HTTP user name - abc is default.
+      PASSWORD: ${PASSWORD:-devcoder1234}                 # HTTP user password - not set by default.
+      SSHD_PORT: ${SSHD_PORT:-}                           # SSHD port - default off - set port to enable
+      #NO_DECOR: true                               # If true -> the application will run without window borders for use as a PWA. (Decor can be enabled and disabled with Ctrl+Shift+d)
+      #PIXELFLUX_WAYLAND: true                      # Enable Wayland support - only with GPU
+      DOCKER_MODS: |
+        linuxserver/mods:universal-package-install
+        linuxserver/mods:universal-docker-in-docker
+        linuxserver/mods:code-server-terraform
+      # -- init-mods-universal-package-install --
+      INSTALL_PACKAGES: |
+        libfuse2
+      # -- init-devcoder-pip3-system-installer --
+      PIP3_SYSTEM_PACKAGES: |
+        pandas
+      # -- init-devcoder-vscode-extensions --
+      CODIUM_EXTENSIONS: |
+        vscode-icons-team.vscode-icons
+        ms-azuretools.vscode-docker
+        ms-python.python
+        ms-python.vscode-pylance
+        ms-python.flake8
+        ms-python.pylint
+        ms-pyright.pyright
+        redhat.vscode-yaml
+        ms-azuretools.vscode-containers
+        kilocode.kilo-code
+        anthropic.claude-code
+        mermaidchart.vscode-mermaid-chart
+      # -- init-devcoder-npm-installer --
+      NPM_PACKAGES: |
+        @anthropic-ai/claude-code
+    volumes:
+      - ./data/config:/config       # /config is default home directory for user abc (uid: 911)
+      - ./data/root:/root           # /root is default home directory for root (uid: 0)
+    tmpfs:
+      - /tmp
+      - /var/cache
+    networks:
+      - devcoder
+    ports:
+      - ${APP_PORT:-8443}:3001      # default internal port: 3001 is HTTPS (3000 is HTTP)
+    shm_size: 2gb
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '--fail-with-body', 'http://localhost:3000/']
+
+networks:
+  devcoder:
+    name: devcoder
+
+
+
+# ==============================================================================
+# DOCKER MODS - all available for vscodium-web
+# ==============================================================================
+# https://mods.linuxserver.io/?mod=vscodium-web
+#
+# AVAILABLE MODS (28):
+# -------------------
+# linuxserver/mods:universal-package-install       - Universal package installer
+# linuxserver/mods:code-server-awscli              - AWS CLI - narzędzia linii poleceń AWS
+# linuxserver/mods:universal-docker                - Docker CLI - klient Docker
+# linuxserver/mods:universal-docker-in-docker      - Docker-in-Docker - pełny Docker daemon
+# linuxserver/mods:code-server-dotnet              - .NET SDK - platforma deweloperska Microsoft
+# linuxserver/mods:code-server-extension-arguments - Extension Arguments - argumenty dla rozszerzeń        <--- BROKEN !!!
+# linuxserver/mods:code-server-flutter             - Flutter SDK - framework UI od Google
+# linuxserver/mods:code-server-golang              - Go - język programowania
+# linuxserver/mods:code-server-java11              - Java 11 JDK
+# linuxserver/mods:code-server-julia               - Julia - język do obliczeń naukowych
+# linuxserver/mods:code-server-nodejs              - Node.js runtime
+# linuxserver/mods:code-server-npmglobal           - npm global packages - globalne paczki npm
+# linuxserver/mods:code-server-nvm                 - NVM - Node Version Manager
+# linuxserver/mods:code-server-php                 - PHP interpreter
+# linuxserver/mods:code-server-php8                - PHP 8.x
+# linuxserver/mods:code-server-php-cli             - PHP CLI
+# linuxserver/mods:code-server-pnpm                - pnpm - szybki menedżer pakietów Node.js
+# linuxserver/mods:code-server-powershell          - PowerShell Core
+# linuxserver/mods:code-server-prolog              - Prolog - język programowania logicznego
+# linuxserver/mods:code-server-python3             - Python 3
+# linuxserver/mods:code-server-python3-poetry      - Poetry - menedżer zależności Python
+# linuxserver/mods:code-server-r                   - R - język do analiz statystycznych
+# linuxserver/mods:code-server-ros2                - ROS2 - Robot Operating System 2
+# linuxserver/mods:code-server-rust                - Rust - język programowania systemowego
+# linuxserver/mods:code-server-scikit-learn        - scikit-learn - biblioteka machine learning
+# linuxserver/mods:code-server-shellcheck          - ShellCheck - linter dla skryptów bash/sh
+# linuxserver/mods:code-server-svn                 - SVN - Apache Subversion
+# linuxserver/mods:code-server-terraform           - Terraform - Infrastructure as Code
+# linuxserver/mods:code-server-zsh                 - Zsh - Z Shell
+# ==============================================================================

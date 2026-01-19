@@ -1,0 +1,27 @@
+#!/bin/bash
+# Restart tint2 panel
+
+echo "Restarting tint2..."
+
+# Kill all tint2 processes quietly
+killall tint2 2>/dev/null
+sleep 1
+
+# Force kill if still running
+killall -9 tint2 2>/dev/null
+sleep 1
+
+# Start tint2 with proper path checking
+if [ -f "$HOME/.config/tint2/tint2rc" ]; then
+    echo "Using user config: $HOME/.config/tint2/tint2rc"
+    tint2 -c "$HOME/.config/tint2/tint2rc" > /dev/null 2>&1 &
+    disown $!
+else
+    echo "Not found user config: $HOME/.config/tint2/tint2rc"
+    echo "Using default config: /defaults/tint2/tint2rc"
+    tint2 -c /defaults/tint2/tint2rc > /dev/null 2>&1 &
+    disown $!
+fi
+
+echo -e "\ntint2 restarted\n"
+exit 0

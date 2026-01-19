@@ -1,0 +1,7 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Menu Start
+Exec=/defaults/rofi/run
+Icon=/defaults/tint2/start.png
+Type=Application
+Categories=Utility;

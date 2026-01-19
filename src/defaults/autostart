@@ -1,0 +1,22 @@
+#! /bin/bash
+
+
+if [ ! -f "$HOME/.config/openbox/rc.xml" ]; then
+    mkdir -p "$HOME/.config/openbox"
+    cp /defaults/rc.xml "$HOME/.config/openbox/rc.xml"
+    openbox --reconfigure
+fi
+
+xdg-mime default thunar.desktop inode/directory
+
+if [ -f "$HOME/.config/tint2/tint2rc" ]; then
+    dbus-launch tint2 -c "$HOME/.config/tint2/tint2rc" > /dev/null 2>&1 &
+else
+    dbus-launch tint2 -c /defaults/tint2/tint2rc > /dev/null 2>&1 &
+fi
+
+# Start terminal with black background
+terminator > /dev/null 2>&1 &
+
+# Start VSCodium
+dbus-launch codium --password-store="gnome-libsecret"

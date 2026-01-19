@@ -1,0 +1,11 @@
+devcoder
+devcoder/*
+data
+data/*
+
+tmp
+tmp/*
+
+
+.env
+run

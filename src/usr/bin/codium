@@ -1,0 +1,22 @@
+#!/bin/bash
+# User-aware VSCodium launcher
+
+BIN=/usr/share/codium/bin/codium
+
+if [[ ! -x "$BIN" ]]; then
+  echo "codium binary not found: $BIN" >&2
+  exit 1
+fi
+
+if [[ "$(id -u)" -eq 0 ]]; then
+  exec dbus-launch "$BIN" \
+    --disable-telemetry \
+    --no-sandbox \
+    --user-data-dir=/config \
+    "$@"
+else
+  exec dbus-launch "$BIN" \
+    --disable-telemetry \
+    --no-sandbox \
+    "$@"
+fi
