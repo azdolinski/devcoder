@@ -27,7 +27,9 @@ RUN set -eux; \
 #    rm -rf /tmp && ln -s /config/tmp /tmp
 
 COPY ./src /
-RUN chmod +x /usr/bin/codium && \
-    chmod +x /defaults/rofi/run && \
-    find /etc/s6-overlay/s6-rc.d/ -name "run" -type f -exec chmod +x {} \;
+RUN if [ -f /usr/bin/codium ]; then chmod +x /usr/bin/codium; fi && \
+    if [ -f /defaults/rofi/run ]; then chmod +x /defaults/rofi/run; fi && \
+    if [ -d /etc/s6-overlay/s6-rc.d ]; then \
+      find /etc/s6-overlay/s6-rc.d/ -name "run" -type f -exec chmod +x {} \;; \
+    fi
 
