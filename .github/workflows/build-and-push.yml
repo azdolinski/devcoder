@@ -127,8 +127,7 @@ jobs:
         id: grype
         with:
           image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-          format: 'sarif'
-          output: 'grype-results.sarif'
+          output-format: 'sarif'
           fail-build: false
           severity-cutoff: 'high'
         continue-on-error: true
