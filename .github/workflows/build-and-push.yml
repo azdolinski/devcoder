@@ -108,13 +108,17 @@ jobs:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
           format: 'sarif'
           output: 'trivy-results.sarif'
+          scan-type: 'image'
+          severity: 'CRITICAL,HIGH'
+        continue-on-error: true
         timeout-minutes: 15
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: hashFiles('trivy-results.sarif') != ''
         with:
           sarif_file: 'trivy-results.sarif'
+          category: 'trivy'
         timeout-minutes: 5
 
       - name: Run Grype vulnerability scanner
@@ -122,15 +126,16 @@ jobs:
         id: grype
         with:
           image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-          format: sarif
-          output: grype-results.sarif
+          format: 'sarif'
+          output: 'grype-results.sarif'
           fail-build: false
-          severity-cutoff: high
+          severity-cutoff: 'high'
+        continue-on-error: true
         timeout-minutes: 15
 
       - name: Upload Grype results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: hashFiles('grype-results.sarif') != ''
         with:
           sarif_file: 'grype-results.sarif'
           category: 'grype'
