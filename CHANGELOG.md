@@ -8,13 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added 🆕
--
+- 🔄 **Syncthing**: Full file synchronization service with s6-overlay integration
+  - Configurable via `SYNCTHING_ENABLED` env var (default: true)
+  - GUI password protection via `SYNCTHING_PASSWORD`
+  - Configurable home/data directories via `SYNCTHING_HOME`/`SYNCTHING_DATA`
+  - GUI accessible on port 8384
+  - Automatic setup with official Syncthing repository
+- 📝 **SciTE**: Lightweight text editor added to base image
+- 📦 **xz-utils**: Compression utilities added to base image
 
 ### Fixed 🐛
 -
 
 ### Changed 🔄
 - ✅ **GitHub Actions**: Added `prod` environment to all deployment workflows for proper environment variables/secrets access and deployment tracking
+- 📁 Added `.claude` to `.gitignore`
 
 ### Security 🔒
 -

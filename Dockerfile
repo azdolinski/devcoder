@@ -6,6 +6,7 @@ RUN set -eux; \
       python-is-python3 \
       python3-pip \
       terminator \
+      scite \
       tint2 \
       rofi \
       wget \
@@ -20,6 +21,7 @@ RUN set -eux; \
       net-tools \
       mc \
       nano \
+      xz-utils \
       unzip; \
     rm -rf /var/lib/apt/lists/*;
 

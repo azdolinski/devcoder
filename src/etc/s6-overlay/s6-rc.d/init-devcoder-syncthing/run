@@ -1,0 +1,63 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+source /etc/s6-overlay/s6-rc.d/echo_module.sh
+set_module_name "init-devcoder-syncthing"
+
+echo "▶️  Start Syncthing Installer"
+
+SYNCTHING_ENABLED="${SYNCTHING_ENABLED:-true}"
+
+if [ "$SYNCTHING_ENABLED" != "true" ]; then
+    echo "◾ Syncthing disabled. Skipping installation."
+    exit 0
+fi
+
+if command -v syncthing >/dev/null 2>&1; then
+    echo "Syncthing already installed."
+    exit 0
+fi
+
+echo "Checking prerequisites..."
+# We need curl and gnupg for the setup below
+# Request via apt queue if missing
+PREREQS=""
+if ! command -v curl >/dev/null 2>&1; then
+    PREREQS="$PREREQS curl"
+fi
+if ! command -v gpg >/dev/null 2>&1; then
+    PREREQS="$PREREQS gnupg"
+fi
+
+if [ -n "$PREREQS" ]; then
+    echo "Requesting prerequisites: $PREREQS"
+    echo_legacy "$PREREQS" >> /devcoder-apt-syncthing-pre.txt
+    
+    # Wait for prerequisites
+    echo "Waiting for prerequisites to be installed..."
+    count=0
+    while ! command -v curl >/dev/null 2>&1 || ! command -v gpg >/dev/null 2>&1; do
+        sleep 2
+        count=$((count+2))
+        if [ "$count" -gt 300 ]; then
+            echo "❌ Prerequisites (curl/gnupg) not found after 300s. Exiting."
+            exit 1
+        fi
+    done
+fi
+
+echo "Setting up Syncthing repository..."
+mkdir -p /etc/apt/keyrings
+# Setup key and source
+if [ ! -f /etc/apt/keyrings/syncthing-archive-keyring.gpg ]; then
+    curl -sL -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.txt
+fi
+
+if [ ! -f /etc/apt/sources.list.d/syncthing.list ]; then
+    echo_legacy "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" > /etc/apt/sources.list.d/syncthing.list
+fi
+
+echo "Requesting Syncthing package installation..."
+echo_legacy "syncthing" >> /devcoder-apt-syncthing.txt
+echo_legacy "python3-bcrypt" >> /devcoder-apt-syncthing.txt
+
+echo "✅ Syncthing setup initiated"

@@ -1,0 +1,108 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+# Syncthing service
+# Runs as the user defined in the container (usually abc)
+
+SYNCTHING_ENABLED="${SYNCTHING_ENABLED:-true}"
+SYNCTHING_HOME="${SYNCTHING_HOME:-/config/syncthing}"
+SYNCTHING_DATA="${SYNCTHING_DATA:-/config/syncthing/data}"
+
+if [ "$SYNCTHING_ENABLED" != "true" ]; then
+    echo "◾ Syncthing disabled. Stopping service."
+    s6-svc -d /run/service/svc-devcoder-syncthing
+    exit 0
+fi
+
+# Create directories if they don't exist
+# We run this as root before dropping privileges, so we need to chown
+if [ ! -d "$SYNCTHING_HOME" ]; then
+    mkdir -p "$SYNCTHING_HOME"
+fi
+
+# Ensure permissions are correct for the user (PUID/PGID are standard linuxserver env vars)
+# We assume s6-setuidgid will be used or we manually switch. 
+# Linuxserver images typically have a user 'abc' mapped to PUID/PGID.
+
+PUID=${PUID:-1000}
+PGID=${PGID:-1000}
+
+# Fix permissions on config dir
+chown -R "$PUID:$PGID" "$SYNCTHING_HOME"
+
+# Wait for syncthing binary (installed by init-devcoder-mods-apt-installer)
+echo "Waiting for syncthing binary..."
+count=0
+while ! command -v syncthing >/dev/null 2>&1; do
+    sleep 2
+    count=$((count+2))
+    if [ "$count" -gt 300 ]; then
+        echo "❌ Syncthing binary not found after 300s. Exiting."
+        exit 1
+    fi
+done
+
+# Setup Password if provided
+if [ -n "$SYNCTHING_PASSWORD" ]; then
+    echo "Configuring Syncthing GUI password..."
+    
+    # Generate config if missing
+    if [ ! -f "$SYNCTHING_HOME/config.xml" ]; then
+        echo "Generating default config..."
+        s6-setuidgid abc syncthing generate --home="$SYNCTHING_HOME" >/dev/null 2>&1
+    fi
+
+    # Python script to update config.xml
+    python3 -c "
+import sys
+import xml.etree.ElementTree as ET
+import bcrypt
+import os
+
+password = os.environ.get('SYNCTHING_PASSWORD')
+config_file = '$SYNCTHING_HOME/config.xml'
+
+try:
+    tree = ET.parse(config_file)
+    root = tree.getroot()
+    gui = root.find('gui')
+    if gui is None:
+        print('Error: <gui> section not found in config.xml')
+        sys.exit(1)
+    
+    user = gui.find('user')
+    if user is None:
+        user = ET.SubElement(gui, 'user')
+    
+    # Set user to 'admin' if not set, or keep existing? 
+    # User requested 'protected by password', usually implies a user too.
+    if not user.text:
+        user.text = 'admin'
+        
+    password_node = gui.find('password')
+    if password_node is None:
+        password_node = ET.SubElement(gui, 'password')
+    
+    # Check if password needs update (naive check, we just overwrite if env var is set)
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+    password_node.text = hashed
+    
+    tree.write(config_file, encoding='UTF-8', xml_declaration=True)
+    print('✅ Syncthing GUI password updated.')
+except Exception as e:
+    print(f'❌ Failed to update Syncthing config: {e}')
+    sys.exit(1)
+"
+    # Fix ownership again after python might have messed it (though python ran as root, file ownership might change? no, we edit in place)
+    # But just in case
+    chown "$PUID:$PGID" "$SYNCTHING_HOME/config.xml"
+fi
+
+echo "Starting Syncthing..."
+exec s6-setuidgid abc syncthing \
+    -home="$SYNCTHING_HOME" \
+    -gui-address="0.0.0.0:8384" \
+    -no-browser \
+    -no-restart \
+    -logflags=0
