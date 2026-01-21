@@ -6,6 +6,13 @@ source /etc/s6-overlay/s6-rc.d/echo_module.sh
 # Set module name once
 set_module_name "svc-s6-tree"
 
+# Check if Mermaid generation is enabled (default: false)
+S6_MERMAID="${S6_MERMAID:-false}"
+if [[ "$S6_MERMAID" != "true" && "$S6_MERMAID" != "1" ]]; then
+    echo "ℹ️  Mermaid generation disabled (S6_MERMAID=$S6_MERMAID), skipping..."
+    exit 0
+fi
+
 # Now use echo normally - it will automatically add [svc-s6-tree] prefix
 echo "▶️  Start dependency tree generator"
 
