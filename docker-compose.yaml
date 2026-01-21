@@ -7,6 +7,7 @@ services:
   devcoder:
     hostname: devcoder
     container_name: devcoder
+    # image: ghcr.io/azdolinski/devcoder:v0.6.5
     build:
       context: .
       dockerfile: Dockerfile
@@ -21,6 +22,8 @@ services:
       - path: .env
         required: false
     environment:
+      PUID: ${PUID:-911}          # user ID
+      PGID: ${PGID:-911}          # group ID
       DEBUG_DEVCODER: ${DEBUG_DEVCODER:-true}
       TZ: ${TZ:-Etc/UTC}
       CUSTOM_USER: ${CUSTOM_USER:-devcoder}               # HTTP user name - abc is default.
@@ -57,8 +60,8 @@ services:
     volumes:
       - ./data/config:/config       # /config is default home directory for user abc (uid: 911)
       - ./data/root:/root           # /root is default home directory for root (uid: 0)
+      - .:/mnt/self                 # self directory mounted to /mnt/self
     tmpfs:
-      - /tmp
       - /var/cache
     networks:
       - devcoder

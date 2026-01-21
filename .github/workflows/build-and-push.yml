@@ -1,0 +1,175 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine if stable release
+        id: stable
+        run: |
+          TAG="${{ github.ref }}"
+          TAG_NAME="${TAG#refs/tags/}"
+
+          # Check if tag matches vX.X.X (stable) or vX.X.X-* (pre-release)
+          # Stable: v1.0.0, v2.0.1, v10.20.30
+          # Pre-release: v1.0.0-alpha, v1.0.0-pre1, v1.0.0-beta.1
+
+          if [[ $TAG_NAME =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "✅ Stable release: $TAG_NAME"
+            echo "IS_STABLE=true" >> $GITHUB_OUTPUT
+          else
+            echo "⏭️ Pre-release: $TAG_NAME"
+            echo "IS_STABLE=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (Stable Release)
+        if: steps.stable.outputs.IS_STABLE == 'true'
+        id: meta_stable
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+
+      - name: Extract metadata (Pre-Release)
+        if: steps.stable.outputs.IS_STABLE == 'false'
+        id: meta_prerelease
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}},prerelease=true
+
+      - name: Build and push (Stable)
+        if: steps.stable.outputs.IS_STABLE == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta_stable.outputs.tags }}
+          labels: ${{ steps.meta_stable.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+      - name: Build and push (Pre-Release)
+        if: steps.stable.outputs.IS_STABLE == 'false'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta_prerelease.outputs.tags }}
+          labels: ${{ steps.meta_prerelease.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+        timeout-minutes: 15
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+        timeout-minutes: 5
+
+      - name: Run Grype vulnerability scanner
+        uses: anchore/scan-action@v4
+        id: grype
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          format: sarif
+          output: grype-results.sarif
+          fail-build: false
+          severity-cutoff: high
+        timeout-minutes: 15
+
+      - name: Upload Grype results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'grype-results.sarif'
+          category: 'grype'
+        timeout-minutes: 5
+
+      - name: Job Summary
+        run: |
+          echo "## Docker Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.stable.outputs.IS_STABLE }}" == "true" ]; then
+            echo "✅ **Stable Release Built**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Published Tags:" >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.meta_stable.outputs.tags }}" | tr ',' '\n' | sed 's/^/- `/' | sed 's/$/`/' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Note:** \`latest\` tag is included for stable releases" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⏭️ **Pre-Release Built**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Published Tags:" >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.meta_prerelease.outputs.tags }}" | tr ',' '\n' | sed 's/^/- `/' | sed 's/$/`/' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Note:** \`latest\` tag is NOT included for pre-releases" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🏗️ Built Platforms:" >> $GITHUB_STEP_SUMMARY
+          echo "- \`linux/amd64\` (Intel/AMD x86_64)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`linux/arm64\` (Apple Silicon, ARM cloud)" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔒 Security Scanning:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Trivy vulnerability scan completed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Grype vulnerability scan completed" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 Results available in **Security** tab" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Pull commands:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
