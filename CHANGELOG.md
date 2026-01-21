@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.6.7] - 2026-01-21
+## [0.6.7]  - 2026-01-21
 
 ### Added 🆕
 - 🔄 **Syncthing**: Full file synchronization service with s6-overlay integration
