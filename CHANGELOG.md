@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added 🆕
+-
+
+### Fixed 🐛
+-
+
+### Changed 🔄
+-
+
+### Security 🔒
+-
+
+---
+
+## [0.6.7] - 2026-01-21
+
+### Added 🆕
 - 🔄 **Syncthing**: Full file synchronization service with s6-overlay integration
   - Configurable via `SYNCTHING_ENABLED` env var (default: true)
   - GUI password protection via `SYNCTHING_PASSWORD`
@@ -18,7 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 📦 **xz-utils**: Compression utilities added to base image
 
 ### Fixed 🐛
--
+- 🐛 **Trivy/Grype scanners**: Corrected scanner configuration with proper `scan-type: 'image'` for Trivy and string format for `severity-cutoff` in Grype
+- 🐛 **VSCodium data directory**: Changed user data directory from `/config` to `$HOME/.codium` for better compatibility
 
 ### Changed 🔄
 - ✅ **GitHub Actions**: Added `prod` environment to all deployment workflows for proper environment variables/secrets access and deployment tracking
