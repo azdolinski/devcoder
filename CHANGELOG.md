@@ -21,6 +21,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.8] - 2026-01-21
+
+### Added 🆕
+- 🔧 **init-chown-config**: New s6-overlay service for proper ownership management of /config directory based on PUID/PGID environment variables
+- 📋 **Syncthing dependency tracking**: Added `up` file to ensure proper initialization order for Syncthing service
+
+### Fixed 🐛
+- 🐛 **VSCodium desktop entry**: Fixed incorrect Exec path in `/usr/share/applications/codium.desktop` from `/usr/share/codium/codium` to `/usr/bin/codium` for proper application launching
+
+### Changed 🔄
+- ⚙️ **Syncthing default**: Changed `SYNCTHING_ENABLED` default from `true` to `false` - users must explicitly enable Syncthing
+
+### Security 🔒
+-
+
+---
+
 ## [0.6.7]  - 2026-01-21
 
 ### Added 🆕

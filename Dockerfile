@@ -32,4 +32,6 @@ RUN set -eux; \
 COPY ./src /
 RUN chmod +x /usr/bin/codium && \
     chmod +x /defaults/rofi/run && \
+    /usr/bin/sed -i 's|Exec=/usr/share/codium/codium|Exec=/usr/bin/codium|g' /usr/share/applications/codium.desktop && \
     find /etc/s6-overlay/s6-rc.d/ -name "run" -type f -exec chmod +x {} \;
+    

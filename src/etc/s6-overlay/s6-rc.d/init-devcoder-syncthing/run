@@ -5,7 +5,7 @@ set_module_name "init-devcoder-syncthing"
 
 echo "▶️  Start Syncthing Installer"
 
-SYNCTHING_ENABLED="${SYNCTHING_ENABLED:-true}"
+SYNCTHING_ENABLED="${SYNCTHING_ENABLED:-false}"
 
 if [ "$SYNCTHING_ENABLED" != "true" ]; then
     echo "◾ Syncthing disabled. Skipping installation."
