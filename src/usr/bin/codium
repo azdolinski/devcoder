@@ -8,15 +8,18 @@ if [[ ! -x "$BIN" ]]; then
   exit 1
 fi
 
+mkdir -p "$HOME/.codium"
+
 if [[ "$(id -u)" -eq 0 ]]; then
   exec dbus-launch "$BIN" \
     --disable-telemetry \
     --no-sandbox \
-    --user-data-dir=/config \
+    --user-data-dir="$HOME/.codium" \
     "$@"
 else
   exec dbus-launch "$BIN" \
     --disable-telemetry \
     --no-sandbox \
+    --user-data-dir="$HOME/.codium" \
     "$@"
 fi
