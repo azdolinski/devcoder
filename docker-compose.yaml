@@ -31,7 +31,6 @@ services:
       DOCKER_MODS: |
         linuxserver/mods:universal-package-install
         linuxserver/mods:universal-docker-in-docker
-        linuxserver/mods:code-server-terraform
       # -- init-mods-universal-package-install --
       INSTALL_PACKAGES: |
         libfuse2
@@ -65,6 +64,7 @@ services:
       - devcoder
     ports:
       - ${APP_PORT:-8443}:3001      # default internal port: 3001 is HTTPS (3000 is HTTP)
+      - ${SSHD_PORT:-2022}:2022     # default internal port: 2022 is SSHD
     shm_size: 2gb
     restart: unless-stopped
     healthcheck:

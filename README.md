@@ -1,23 +1,14 @@
+# Information
+
+This container is based on the [linuxserver/vscodium-web](https://github.com/linuxserver/docker-vscodium) image.
+
 # Technology Stack
 
-Xvfb       → serwer X (DISPLAY)
-Openbox    → window manager
-Polybar    → panel (opcjonalnie)
-Selkies    → streaming GUI do przeglądarki
+Xvfb       → serwer X (DISPLAY)<br>
+Openbox    → window manager<br>
+Polybar    → panel (opcjonalnie)<br>
+Selkies    → streaming GUI do przeglądarki<br>
 VSCodium   → aplikacja
-
-# Built-in environment variables
-
-| Variable | Default / Notes |
-| --- | --- |
-| `TZ` | Etc/UTC |
-| `CUSTOM_USER` | devcoder |
-| `PASSWORD` | devcoder1234 |
-| `APP_PORT` | 8443 |
-| `SSHD_PORT` | empty = disabled (1-65535) |
-| `NGROK_AUTHTOKEN` | empty = disabled |
-| `NGROK_PORT` | 3000 |
-| `NGROK_BIN` | auto-detected |
 
 # Docker Mods → devcoder ENV mapping
 
@@ -48,5 +39,5 @@ VSCodium   → aplikacja
 | linuxserver/mods:code-server-scikit-learn | not migrated yet | use Docker Mods for now |
 | linuxserver/mods:code-server-shellcheck | not migrated yet | use Docker Mods for now |
 | linuxserver/mods:code-server-svn | not migrated yet | use Docker Mods for now |
-| linuxserver/mods:code-server-terraform | not migrated yet | use Docker Mods for now |
+| linuxserver/mods:code-server-terraform | `TERRAFORM_INSTALL` | false = disabled |
 | linuxserver/mods:code-server-zsh | not migrated yet | use Docker Mods for now |

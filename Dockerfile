@@ -3,6 +3,7 @@ FROM lscr.io/linuxserver/vscodium:latest
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
+      python-is-python3 \
       python3-pip \
       terminator \
       tint2 \
@@ -27,9 +28,6 @@ RUN set -eux; \
 #    rm -rf /tmp && ln -s /config/tmp /tmp
 
 COPY ./src /
-RUN if [ -f /usr/bin/codium ]; then chmod +x /usr/bin/codium; fi && \
-    if [ -f /defaults/rofi/run ]; then chmod +x /defaults/rofi/run; fi && \
-    if [ -d /etc/s6-overlay/s6-rc.d ]; then \
-      find /etc/s6-overlay/s6-rc.d/ -name "run" -type f -exec chmod +x {} \;; \
-    fi
-
+RUN chmod +x /usr/bin/codium && \
+    chmod +x /defaults/rofi/run && \
+    find /etc/s6-overlay/s6-rc.d/ -name "run" -type f -exec chmod +x {} \;
