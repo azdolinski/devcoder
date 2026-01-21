@@ -1,0 +1,16 @@
+#!/usr/bin/with-contenv bash
+
+# Source the echo module
+source /etc/s6-overlay/s6-rc.d/echo_module.sh
+
+# Set module name once
+set_module_name "svc-s6-tree"
+
+# Now use echo normally - it will automatically add [svc-s6-tree] prefix
+echo "▶️  Start dependency tree generator"
+
+export S6_TREE="/etc/s6-overlay/s6-rc.d/"
+export OUTPUT_FILE="$HOME/s6-tree.md"
+
+exec python3 /etc/s6-overlay/s6-rc.d/svc-s6-tree/python/dependency_tree.py
+echo "🔚  Finish dependency tree generator"

@@ -1,0 +1,96 @@
+#!/usr/bin/with-contenv bash
+
+source /etc/s6-overlay/s6-rc.d/echo_module.sh
+set_module_name "init-devcoder-codium-extensions"
+
+echo "▶️  Start installer"
+
+BIN=/usr/share/codium/bin/codium
+
+# Set Default - Empty Extensions To Install
+EXTENSIONS_TO_INSTALL=""
+
+if [[ ! -x "$BIN" ]]; then
+  echo "Extension Installer: codium binary not found: $BIN" >&2
+  exit 1
+fi
+
+if [ -n "${CODIUM_EXTENSIONS:-}" ]; then
+  echo "Found extensions in environment variable:"
+  echo "${CODIUM_EXTENSIONS}"
+  CLEANED_EXTENSIONS=$(printf "%s" "${CODIUM_EXTENSIONS}" | tr '\n' ' ')
+  CLEANED_EXTENSIONS="${CLEANED_EXTENSIONS//\"/}"
+  CLEANED_EXTENSIONS="${CLEANED_EXTENSIONS//,/ }"
+  CLEANED_EXTENSIONS=$(printf "%s" "${CLEANED_EXTENSIONS}" | sed -e 's/[[:space:]]\+/ /g' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  EXTENSIONS_TO_INSTALL="$EXTENSIONS_TO_INSTALL $CLEANED_EXTENSIONS"
+fi
+
+EXTENSIONS_CONFIG_FILE="/config/.config/extensions.txt"
+if [ -f "$EXTENSIONS_CONFIG_FILE" ]; then
+  CONFIG_EXTENSIONS=$(parse_config_file "$EXTENSIONS_CONFIG_FILE")
+  EXTENSIONS_TO_INSTALL="$EXTENSIONS_TO_INSTALL $CONFIG_EXTENSIONS"
+fi
+
+sanitize_extensions() {
+  local input="$1"
+  local cleaned
+  cleaned=$(printf "%s" "$input" | tr '\n' ' ')
+  cleaned="${cleaned//\"/}"
+  cleaned="${cleaned//,/ }"
+  printf "%s" "$cleaned" | sed -e 's/[[:space:]]\+/ /g' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+install_extensions() {
+  local source="$1"
+  local extensions_string="$2"
+
+  if [ -z "$extensions_string" ]; then
+    return
+  fi
+
+  echo "Final extensions to install from ${source}:"
+  echo "$extensions_string"
+  IFS=' ' read -ra EXTENSIONS <<< "$extensions_string"
+
+  FORCE_FLAG=""
+  if [ "${CODIUM_EXTENSIONS_FORCE:-}" = "true" ] || [ "${CODIUM_EXTENSIONS_FORCE:-}" = "True" ]; then
+    FORCE_FLAG="--force"
+    echo "Force flag enabled for extension installations"
+  fi
+
+  for ext in "${EXTENSIONS[@]}"; do
+    if [ -n "$ext" ]; then
+      echo "Installing extension: $ext"
+      output=$(s6-setuidgid abc codium --user-data-dir /config \
+                  --extensions-dir=/config/.vscode-oss/extensions \
+                  --install-extension "$ext" $FORCE_FLAG 2>&1)
+      echo "$output" | sed 's/ is already installed\..*/ is already installed./'
+    fi
+  done
+}
+
+listen_for_devcoder_extension_files() {
+  local idle_seconds=0
+  shopt -s nullglob
+  while (( idle_seconds < 60 )); do
+    local devcoder_files=(/devcoder-codium-ext-*)
+    if (( ${#devcoder_files[@]} > 0 )); then
+      for devcoder_file in "${devcoder_files[@]}"; do
+        if [ -f "$devcoder_file" ]; then
+          file_extensions=$(sanitize_extensions "$(cat "$devcoder_file")")
+          install_extensions "$devcoder_file" "$file_extensions"
+          rm -f "$devcoder_file"
+        fi
+      done
+      idle_seconds=0
+    else
+      sleep 1
+      ((idle_seconds++))
+    fi
+  done
+  echo "No /devcoder-codium-ext-* files for 60 seconds, exiting listener."
+}
+
+EXTENSIONS_TO_INSTALL=$(sanitize_extensions "$EXTENSIONS_TO_INSTALL")
+install_extensions "env/config" "$EXTENSIONS_TO_INSTALL"
+listen_for_devcoder_extension_files &

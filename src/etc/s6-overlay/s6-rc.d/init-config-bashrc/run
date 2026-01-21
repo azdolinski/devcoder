@@ -1,0 +1,51 @@
+#!/usr/bin/with-contenv bash
+set -euo pipefail
+
+
+
+# Source the echo module
+source /etc/s6-overlay/s6-rc.d/echo_module.sh
+
+# Set module name once
+set_module_name "init-config-bashrc"
+
+echo "Starting init-config-bashrc"
+
+TARGET_USER="${CUSTOM_USER:-abc}"
+TARGET_HOME="/config"
+BASHRC="$TARGET_HOME/.bashrc"
+
+if ! id "$TARGET_USER" >/dev/null 2>&1; then
+  exit 0
+fi
+
+mkdir -p "$TARGET_HOME"
+if [ ! -f "$BASHRC" ]; then
+  touch "$BASHRC"
+  chown "$TARGET_USER":"$TARGET_USER" "$BASHRC" 2>/dev/null || true
+fi
+
+PATH_BLOCK_START="# >>> devcoder bashrc path >>>"
+PATH_BLOCK_END="# <<< devcoder bashrc path <<<"
+ALIAS_BLOCK_START="# >>> devcoder bashrc aliases >>>"
+ALIAS_BLOCK_END="# <<< devcoder bashrc aliases <<<"
+
+if ! grep -Fq "$PATH_BLOCK_START" "$BASHRC"; then
+  cat <<'EOF' >> "$BASHRC"
+# >>> devcoder bashrc path >>>
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+# <<< devcoder bashrc path <<<
+
+EOF
+fi
+
+if ! grep -Fq "$ALIAS_BLOCK_START" "$BASHRC"; then
+  cat <<'EOF' >> "$BASHRC"
+# >>> devcoder bashrc aliases >>>
+export LS_OPTIONS='--color=auto'
+alias ls='ls $LS_OPTIONS'
+alias ll='ls $LS_OPTIONS -l'
+alias l='ls $LS_OPTIONS -lA'
+# <<< devcoder bashrc aliases <<<
+EOF
+fi

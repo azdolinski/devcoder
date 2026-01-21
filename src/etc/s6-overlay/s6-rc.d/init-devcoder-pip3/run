@@ -1,0 +1,104 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+# Source the echo module
+source /etc/s6-overlay/s6-rc.d/echo_module.sh
+
+# Set module name once
+set_module_name "init-devcoder-pip3"
+
+echo "▶️  Start installer"
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+
+ENV_PIP3_SYSTEM_PACKAGES=""
+FILE_PIP3_SYSTEM_PACKAGES=""
+PIP3_SYSTEM_PACKAGES_TO_INSTALL=""
+
+run_as_root() {
+  if [ "$(id -u)" = "0" ]; then
+    "$@"
+    return
+  fi
+  if command -v sudo >/dev/null 2>&1; then
+    /usr/bin/sudo -E "$@"
+    return
+  fi
+  if command -v su >/dev/null 2>&1; then
+    su -s /bin/bash root -c "$(printf '%q ' "$@")"
+    return
+  fi
+  "$@"
+}
+
+run_as_user() {
+  if id -u "$TARGET_USER" >/dev/null 2>&1; then
+    if [ "$(id -u)" = "$(id -u "$TARGET_USER")" ]; then
+      "$@"
+      return
+    fi
+    if command -v sudo >/dev/null 2>&1; then
+      /usr/bin/sudo -E -u "$TARGET_USER" env PATH="$PATH" "$@"
+      return
+    fi
+    if command -v su >/dev/null 2>&1; then
+      su -s /bin/bash "$TARGET_USER" -c "$(printf '%q ' "$@")"
+      return
+    fi
+    if command -v s6-setuidgid >/dev/null 2>&1; then
+      s6-setuidgid "$TARGET_USER" "$@"
+      return
+    fi
+  fi
+  "$@"
+}
+
+if [ -n "${PIP3_SYSTEM_PACKAGES:-}" ]; then
+  ENV_PIP3_SYSTEM_PACKAGES="${PIP3_SYSTEM_PACKAGES//\"/}"
+  ENV_PIP3_SYSTEM_PACKAGES="${ENV_PIP3_SYSTEM_PACKAGES//,/ }"
+  PIP3_SYSTEM_PACKAGES_TO_INSTALL="$PIP3_SYSTEM_PACKAGES_TO_INSTALL $ENV_PIP3_SYSTEM_PACKAGES"
+fi
+
+TARGET_USER="${CUSTOM_USER:-abc}"
+if id "$TARGET_USER" >/dev/null 2>&1; then
+  TARGET_UID=$(id -u "$TARGET_USER")
+  TARGET_GID=$(id -g "$TARGET_USER")
+else
+  TARGET_UID=911
+  TARGET_GID=911
+fi
+
+PIP3_CONFIG_FILE="/config/pip3-system.txt"
+if [ -f "$PIP3_CONFIG_FILE" ]; then
+  FILE_PIP3_SYSTEM_PACKAGES=$(parse_config_file "$PIP3_CONFIG_FILE")
+  PIP3_SYSTEM_PACKAGES_TO_INSTALL="$PIP3_SYSTEM_PACKAGES_TO_INSTALL $FILE_PIP3_SYSTEM_PACKAGES"
+fi
+
+if [ -z "$PIP3_SYSTEM_PACKAGES_TO_INSTALL" ]; then
+  echo "No PIP3_SYSTEM_PACKAGES configured; skipping."
+  exit 0
+fi
+
+PIP3_SYSTEM_PACKAGES_TO_INSTALL=$(printf "%s" "$PIP3_SYSTEM_PACKAGES_TO_INSTALL" | tr ',\n\r\t' '    ' | xargs)
+echo "Installing pip3 system packages: $PIP3_SYSTEM_PACKAGES_TO_INSTALL"
+
+# Configure pip to allow system packages
+mkdir -p ~/.config/pip
+printf "[global]\nbreak-system-packages = true\n" > ~/.config/pip/pip.conf
+echo "✅ pip configured to allow system packages"
+
+if ! command -v pip3 >/dev/null 2>&1; then
+  echo "⚠️  pip3 not found; skipping pip3 installs."
+  exit 0
+fi
+
+for pkg in $PIP3_SYSTEM_PACKAGES_TO_INSTALL; do
+  if pip3 show "$pkg" >/dev/null 2>&1; then
+    echo "◾  $pkg is already installed, skipping..."
+  else
+    echo "pip3 install $pkg"
+    if ! run_as_user pip3 install "$pkg"; then
+      echo "⚠️ warn: failed to install $pkg (continuing)" >&2
+    fi
+  fi
+done

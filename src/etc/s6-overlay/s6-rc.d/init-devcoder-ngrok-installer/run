@@ -1,0 +1,80 @@
+#!/usr/bin/with-contenv bash
+set -euo pipefail
+
+# Source the echo module
+source /etc/s6-overlay/s6-rc.d/echo_module.sh
+set_module_name "init-devcoder-ngrok-installer"
+
+echo "▶️  Start installer"
+
+NGROK_BIN="${NGROK_BIN:-$(command -v ngrok 2>/dev/null || true)}"
+NGROK_BIN="${NGROK_BIN:-/usr/local/bin/ngrok}"
+NGROK_PORT="${NGROK_PORT:-3000}"
+
+rm -f "$HOME/ngrok-url.txt" 2>/dev/null || true
+
+if [ -z "${NGROK_AUTHTOKEN:-}" ]; then
+  echo "NGROK_AUTHTOKEN not set. Skipping ngrok installation."
+  exit 0
+fi
+
+run_as_root() {
+  if [ "$(id -u)" = "0" ]; then
+    "$@"
+    return
+  fi
+  if command -v sudo >/dev/null 2>&1; then
+    sudo -E "$@"
+    return
+  fi
+  if command -v su >/dev/null 2>&1; then
+    su -s /bin/bash root -c "$(printf '%q ' "$@")"
+    return
+  fi
+  "$@"
+}
+
+install_ngrok_repo() {
+  if [ ! -f "/etc/apt/trusted.gpg.d/ngrok.asc" ]; then
+    run_as_root bash -c "curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc | tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null"
+  fi
+  if [ ! -f "/etc/apt/sources.list.d/ngrok.list" ]; then
+    run_as_root bash -c "echo 'deb https://ngrok-agent.s3.amazonaws.com bookworm main' > /etc/apt/sources.list.d/ngrok.list"
+  fi
+}
+
+request_ngrok_install() {
+  echo "**** Adding ngrok to package install list ****"
+  echo_legacy "ngrok" >> /devcoder-apt-ngrok.txt
+}
+
+wait_for_ngrok() {
+  local waited=0
+  while ! command -v ngrok >/dev/null 2>&1; do
+    if (( waited >= 60 )); then
+      echo "⚠️  ngrok not available after 60 seconds."
+      return 1
+    fi
+    sleep 1
+    ((waited++))
+  done
+  return 0
+}
+
+if ! command -v ngrok >/dev/null 2>&1; then
+  echo "Installing ngrok via apt repository..."
+  install_ngrok_repo
+  request_ngrok_install
+  echo "Waiting for ngrok to be installed..."
+  wait_for_ngrok || exit 0
+  NGROK_BIN="$(command -v ngrok 2>/dev/null || echo "$NGROK_BIN")"
+fi
+
+echo "Using ngrok binary: $NGROK_BIN"
+mkdir -p "$HOME/logs"
+rm -f "$HOME/logs/ngrok.log"
+
+run_as_root "$NGROK_BIN" authtoken "$NGROK_AUTHTOKEN"
+
+echo "✅ Ngrok setup complete"
+exit 0

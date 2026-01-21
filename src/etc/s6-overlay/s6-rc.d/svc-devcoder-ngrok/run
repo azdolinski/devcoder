@@ -1,0 +1,64 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+# Check requirements
+if [ -z "${NGROK_AUTHTOKEN:-}" ]; then
+  echo "NGROK_AUTHTOKEN not set. Stopping service."
+  s6-svc -d /run/service/svc-devcoder-ngrok
+  exit 0
+fi
+
+NGROK_BIN="${NGROK_BIN:-$(command -v ngrok 2>/dev/null || true)}"
+NGROK_BIN="${NGROK_BIN:-/usr/local/bin/ngrok}"
+NGROK_PORT="${NGROK_PORT:-3000}"
+
+if [ ! -x "$NGROK_BIN" ]; then
+   echo "ngrok binary not found at $NGROK_BIN. Stopping service."
+   s6-svc -d /run/service/svc-devcoder-ngrok
+   exit 0
+fi
+
+mkdir -p "$HOME/logs"
+# Don't delete log immediately if we want to debug, but typical for restart
+# rm -f "$HOME/logs/ngrok.log" 
+# Better to truncate or let ngrok handle it? Ngrok appends or overwrites?
+# Command below uses explicit path.
+
+echo "Starting ngrok tunnel on port $NGROK_PORT..."
+
+# Start ngrok in background
+"$NGROK_BIN" http "$NGROK_PORT" --log "$HOME/logs/ngrok.log" --log-format json &
+NGROK_PID=$!
+
+# Wait loop for URL
+MAX_RETRIES=30
+count=0
+found=0
+
+echo "Waiting for URL..."
+while [ $count -lt $MAX_RETRIES ]; do
+  sleep 1
+  if [ -f "$HOME/logs/ngrok.log" ]; then
+    if command -v jq >/dev/null 2>&1; then
+      TUNNEL_URL=$(jq -r '.url // empty' "$HOME/logs/ngrok.log" | grep -v '^$' | tail -1)
+    else
+      TUNNEL_URL=$(grep '"url"' "$HOME/logs/ngrok.log" | sed -n 's/.*"url":"\([^"]*\)".*/\1/p' | tail -1)
+    fi
+
+    if [ -n "$TUNNEL_URL" ]; then
+      echo "$TUNNEL_URL" > "$HOME/ngrok-url.txt"
+      echo "✅ Tunnel URL: $TUNNEL_URL"
+      found=1
+      break
+    fi
+  fi
+  count=$((count+1))
+done
+
+if [ $found -eq 0 ]; then
+  echo "⚠️  Could not extract tunnel URL from logs within timeout."
+fi
+
+# Trap signals to pass to ngrok
+trap 'kill -TERM $NGROK_PID' TERM INT
+wait "$NGROK_PID"

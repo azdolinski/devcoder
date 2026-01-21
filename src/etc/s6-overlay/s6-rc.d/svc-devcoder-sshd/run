@@ -1,0 +1,28 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+SSHD_PORT="${SSHD_PORT:-}"
+
+if [ -z "$SSHD_PORT" ]; then
+  echo "◾ SSHD_PORT not set. Stopping service."
+  s6-svc -d /run/service/svc-devcoder-sshd
+  exit 0
+fi
+
+# Double check numeric again in case environment changed, though unlikely for s6 service
+if ! printf '%s' "$SSHD_PORT" | grep -Eq '^[0-9]+$'; then
+   echo "◾ SSHD_PORT not numeric. Stopping service."
+   s6-svc -d /run/service/svc-devcoder-sshd
+   exit 0
+fi
+
+# Ensure sshd dir exists (redundant with init but safe)
+mkdir -p /run/sshd
+
+if [ ! -x /usr/sbin/sshd ]; then
+  echo "SSHD binary not found. Stopping service."
+  s6-svc -d /run/service/svc-devcoder-sshd
+  exit 0
+fi
+
+exec /usr/sbin/sshd -D -p "$SSHD_PORT" -e

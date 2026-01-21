@@ -8,4 +8,4 @@ tmp/*
 
 
 .env
-run
+/run

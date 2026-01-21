@@ -1,0 +1,48 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+source /etc/s6-overlay/s6-rc.d/echo_module.sh
+set_module_name "init-devcoder-sshd"
+echo "▶️  Start service"
+
+SSHD_PORT="${SSHD_PORT:-}"
+
+if [ -z "$SSHD_PORT" ]; then
+  echo "SSHD_PORT not set. Skipping SSHD startup."
+  exit 0
+fi
+
+if ! printf '%s' "$SSHD_PORT" | grep -Eq '^[0-9]+$'; then
+  echo "SSHD_PORT is not numeric. Skipping SSHD startup."
+  exit 0
+fi
+
+if [ "$SSHD_PORT" -lt 1 ] || [ "$SSHD_PORT" -gt 65535 ]; then
+  echo "SSHD_PORT out of range (1-65535). Skipping SSHD startup."
+  exit 0
+fi
+
+echo "SSHD_PORT: $SSHD_PORT"
+
+echo "**** Adding openssh-server to package install list ****"
+echo_legacy "openssh-server" >> /devcoder-apt-openssh-server.txt
+
+waited=0
+while ! command -v sshd >/dev/null 2>&1; do
+  if (( waited >= 60 )); then
+    echo "⚠️  openssh-server not available after 60 seconds."
+    exit 0
+  fi
+  sleep 1
+  ((waited++))
+done
+
+
+if [ ! -f "/etc/ssh/ssh_host_rsa_key" ]; then
+  rm -f /etc/ssh/ssh_host_*
+  ssh-keygen -A
+fi
+
+mkdir -p /run/sshd
+# exec /usr/sbin/sshd -D -p "$SSHD_PORT"
+echo "✅ SSHD setup complete"
+exit 0

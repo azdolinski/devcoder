@@ -1,0 +1,51 @@
+#!/usr/bin/with-contenv bash
+
+source /etc/s6-overlay/s6-rc.d/echo_module.sh
+set_module_name "init-devcoder-terraform"
+
+echo "▶️  Start installer"
+
+if [ "${TERRAFORM_INSTALL,,}" != "true" ]; then
+    echo "**** TERRAFORM_INSTALL not enabled, skipping terraform setup ****"
+    exit 0
+fi
+
+if [ ! -f "/etc/apt/sources.list.d/hashicorp.list" ]; then
+    echo "**** Adding terraform packages to install list ****"
+    
+    # Clean up potentially bad previous run artifacts
+    rm -f /usr/share/keyrings/hashicorp.gpg
+    rm -f /usr/share/keyrings/hashicorp-archive-keyring.gpg
+
+    # Install keyring
+    curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg --yes
+
+    # Get Architecture
+    ARCH=$(dpkg --print-architecture)
+
+    # Get Codename
+    if command -v lsb_release >/dev/null 2>&1; then
+        CODENAME=$(lsb_release -cs)
+    elif [ -f /etc/os-release ]; then
+        source /etc/os-release
+        # Try different variables that might hold the codename
+        CODENAME=${VERSION_CODENAME:-${UBUNTU_CODENAME:-}}
+        if [ -z "$CODENAME" ]; then
+             # Fallback parsing
+             CODENAME=$(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || true)
+        fi
+    fi
+    
+    # Last resort fallback if still empty (e.g. basic debian container)
+    if [ -z "$CODENAME" ]; then
+        CODENAME="bookworm" 
+    fi
+
+    echo "Detected settings for Terraform: Arch=$ARCH, Codename=$CODENAME"
+
+    echo_legacy "deb [arch=${ARCH} signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com ${CODENAME} main" > /etc/apt/sources.list.d/hashicorp.list
+    echo_legacy "terraform" >> /devcoder-apt-packages-terraform.txt
+    echo_legacy "hashicorp.terraform" >> /devcoder-codium-ext-terraform.txt
+else
+    echo "◾ Terraform packages already installed, skipping ****"
+fi
