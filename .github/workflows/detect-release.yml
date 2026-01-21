@@ -63,9 +63,9 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
 
-          # Extracts text between ## [VERSION] and next ## [ or ---
+          # Extracts text after ## [VERSION] until next ## [ or ---
           # Handles multiline content and extra spaces in version header (## [X.X.X]*)
-          CHANGELOG=$(awk "/## \[$VERSION\]*/,/^## \[|^---$/" CHANGELOG.md | sed '$ d' | tail -n +2)
+          CHANGELOG=$(awk 'found{print; if(/^## \[|^---$/)exit} /## \['"$VERSION"'\]*/{found=1}' CHANGELOG.md)
 
           # Use fallback if empty
           if [ -z "$CHANGELOG" ]; then
