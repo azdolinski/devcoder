@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -
 
 ### Changed 🔄
--
+- ✅ **GitHub Actions**: Added `prod` environment to all deployment workflows for proper environment variables/secrets access and deployment tracking
 
 ### Security 🔒
 -
