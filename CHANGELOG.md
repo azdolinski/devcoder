@@ -21,6 +21,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.11] - 2026-01-22
+
+### Added 🆕
+- 🔄 **workflow_run trigger**: Added `workflow_run` trigger to `build-and-push.yml` to properly chain workflows
+- 🏷️ **Dynamic tag detection**: Added `get_tag` step that determines tag from both `workflow_run` and `push: tags` events
+- 📚 **Complete guide**: Updated `/tmp/complete-guide-en.md` with comprehensive documentation of the new workflow architecture
+
+### Fixed 🐛
+- 🔧 **GitHub Actions automation**: Fixed critical issue where `build-and-push.yml` wasn't triggering when tags were created by `detect-release.yml`
+  - **Root cause**: GitHub Actions doesn't trigger `on: push: tags:` when tags are created by other workflows (security feature to prevent infinite loops)
+  - **Solution**: Implemented `workflow_run` trigger that reacts to completion of `detect-release.yml` workflow
+  - **Fallback**: Kept `push: tags` trigger for manual tag creation workflows
+
+### Changed 🔄
+- 🔄 **build-and-push.yml**: Updated all references from `${{ github.ref_name }}` to `${{ steps.get_tag.outputs.REF_NAME }}`
+- 📖 **Documentation**: Enhanced troubleshooting section with workflow_run-specific issues and solutions
+
+### Technical Details 🛠️
+- **Dual trigger system**: Workflow now supports both automated (via detect-release) and manual tag creation
+- **Tag fetching logic**: When triggered by `workflow_run`, workflow fetches the most recent tag using `git ls-remote`
+- **Backward compatible**: Manual tag pushes still work via fallback `push: tags` trigger
+
+---
+
 ## [0.6.10] - 2026-01-22
 
 ### Added 🆕
