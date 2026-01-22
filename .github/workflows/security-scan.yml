@@ -120,12 +120,6 @@ jobs:
       security-events: write
     
     steps:
-      - name: Wait for image to be available in registry
-        run: |
-          echo "⏳ Waiting 90 seconds for image to propagate in registry..."
-          echo "Image to scan: ${{ needs.extract-version.outputs.image-ref }}"
-          sleep 90
-          echo "✅ Wait complete, proceeding with scan"
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -171,13 +165,6 @@ jobs:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     
     steps:
-      - name: Wait for image to be available in registry
-        run: |
-          echo "⏳ Waiting 90 seconds for image to propagate in registry..."
-          echo "Image to scan: ${{ needs.extract-version.outputs.image-ref }}"
-          sleep 90
-          echo "✅ Wait complete, proceeding with scan"
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -243,13 +230,6 @@ jobs:
     needs: extract-version
     
     steps:
-      - name: Wait for image to be available in registry
-        run: |
-          echo "⏳ Waiting 90 seconds for image to propagate in registry..."
-          echo "Image to scan: ${{ needs.extract-version.outputs.image-ref }}"
-          sleep 90
-          echo "✅ Wait complete, proceeding with scan"
-
       - name: Checkout
         uses: actions/checkout@v4
 
