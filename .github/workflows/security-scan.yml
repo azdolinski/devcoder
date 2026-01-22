@@ -59,7 +59,7 @@ jobs:
               | head -1 \
               | awk '{print $2}' \
               | sed 's/refs\/tags\///' \
-              | tr -d '{}')
+              | tr -d '{}^')
             echo "TAG=$TAG" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
             # Normal tag push event
