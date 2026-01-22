@@ -66,7 +66,11 @@ jobs:
             echo "TAG=$TAG" >> $GITHUB_OUTPUT
             echo "REF_NAME=$TAG" >> $GITHUB_OUTPUT
           fi
-          echo "Using tag: $TAG"
+          
+          # Strip 'v' prefix for Docker image tags (Git: v0.6.15 → Docker: 0.6.15)
+          VERSION_NO_V=${TAG#v}
+          echo "VERSION_NO_V=$VERSION_NO_V" >> $GITHUB_OUTPUT
+          echo "Using tag: $TAG (Docker version: $VERSION_NO_V)"
 
       - name: Set security scan flag
         id: set_scan_flag
@@ -172,7 +176,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.REF_NAME }}
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.VERSION_NO_V }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           scan-type: 'image'
@@ -192,7 +196,7 @@ jobs:
         uses: anchore/scan-action@v4
         id: grype
         with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.REF_NAME }}
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.VERSION_NO_V }}
           output-format: 'sarif'
           fail-build: false
           severity-cutoff: 'high'

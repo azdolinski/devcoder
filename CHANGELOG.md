@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Now properly preserves existing SSH keys between container restarts
   - `ssh-keygen -A` only generates missing keys, no interactive prompts
   - Fixes "Overwrite (y/n)?" prompt that blocked container startup
+- 🔒 **Security scan workflow**: Fixed Trivy/Grype scanning wrong image tag
+  - Added `VERSION_NO_V` output to strip 'v' prefix from Git tags
+  - Scanners now use correct Docker tags (e.g., `0.6.15` instead of `v0.6.15`)
+  - Fixes "MANIFEST_UNKNOWN" error in security scans
 
 ---
 
