@@ -185,7 +185,18 @@ jobs:
           SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
         with:
           image: ${{ env.IMAGE_REF }}
-          args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile --sarif-file-output=snyk-container.sarif
+          args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile
+          sarif: true
+
+      - name: Rename SARIF for distinct category
+        if: ${{ always() && env.SNYK_TOKEN != '' }}
+        run: |
+          if [ -f "snyk.sarif" ]; then
+            mv snyk.sarif snyk-container.sarif
+            echo "✅ Renamed snyk.sarif → snyk-container.sarif"
+          else
+            echo "⚠️ snyk.sarif not found, skipping rename"
+          fi
 
       - name: Upload Snyk Container results to GitHub Security tab
         if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk-container.sarif') != '' }}
