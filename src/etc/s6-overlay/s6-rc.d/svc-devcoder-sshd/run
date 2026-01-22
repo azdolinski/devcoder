@@ -2,6 +2,7 @@
 # shellcheck shell=bash
 
 SSHD_PORT="${SSHD_PORT:-}"
+SSHD_PERMITROOTLOGIN="${SSHD_PERMITROOTLOGIN:-false}"
 
 if [ -z "$SSHD_PORT" ]; then
   echo "◾ SSHD_PORT not set. Stopping service."
@@ -25,4 +26,11 @@ if [ ! -x /usr/sbin/sshd ]; then
   exit 0
 fi
 
-exec /usr/sbin/sshd -D -p "$SSHD_PORT" -e
+# Modify sshd_config with sed
+sed -i "s/^#Port 22$/Port $SSHD_PORT/" /etc/ssh/sshd_config
+
+if [ "$SSHD_PERMITROOTLOGIN" = "true" ]; then
+  sed -i "s/^#PermitRootLogin prohibit-password$/PermitRootLogin yes/" /etc/ssh/sshd_config
+fi
+
+exec /usr/sbin/sshd -D -e

@@ -33,4 +33,12 @@ else
     echo "Ownership of /config is already correct: $CURRENT_OWNER"
 fi
 
+# Set root password if ROOT_PASSWORD is defined and not empty
+ROOT_PASSWORD="${ROOT_PASSWORD:-}"
+if [ -n "$ROOT_PASSWORD" ]; then
+    echo "Setting root password"
+    echo_legacy "root:$ROOT_PASSWORD" | chpasswd
+    echo "Root password set successfully"
+fi
+
 echo "Completed init-chown-config"

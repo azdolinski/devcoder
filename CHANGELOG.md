@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added 🆕
--
+- 🔐 **SSHD PermitRootLogin**: New `SSHD_PERMITROOTLOGIN` env var to allow root SSH login
+  - Default: `false` (root login disabled)
+  - Set to `true` to enable `PermitRootLogin yes` in sshd_config
+  - Works together with `SSHD_PORT` and `ROOT_PASSWORD` configuration
+- 🔑 **ROOT_PASSWORD support**: New `ROOT_PASSWORD` env var to set root user password
+  - Only sets password when variable is defined and not empty
+  - Useful in combination with `SSHD_PERMITROOTLOGIN=true`
 
 ### Fixed 🐛
 -
