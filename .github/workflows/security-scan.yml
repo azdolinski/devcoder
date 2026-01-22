@@ -198,7 +198,7 @@ jobs:
 
       - name: Install SARIF SDK
         if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk.sarif') != '' }}
-        run: dotnet tool install --global Microsoft.CodeAnalysis.Sarif.Multitool
+        run: dotnet tool install --global Sarif.Multitool
 
       - name: Merge SARIF runs using official SARIF SDK
         if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk.sarif') != '' }}
