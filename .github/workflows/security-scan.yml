@@ -154,13 +154,15 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Prepare image
-        if: ${{ secrets.SNYK_TOKEN != '' }}
+        if: ${{ env.SNYK_TOKEN != '' }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then IMAGE_REF=devcoder-test; else IMAGE_REF="${{ needs.extract-version.outputs.image-ref }}"; fi
           if [ -z "$IMAGE_REF" ]; then echo "Missing image reference" >&2; exit 1; fi
@@ -168,17 +170,17 @@ jobs:
           docker build -t "$IMAGE_REF" .
 
       - name: Run Snyk to check Docker image for vulnerabilities
-        if: ${{ secrets.SNYK_TOKEN != '' }}
+        if: ${{ env.SNYK_TOKEN != '' }}
         continue-on-error: true
         uses: snyk/actions/docker@master
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
         with:
           image: ${{ env.IMAGE_REF }}
           args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile --sarif-file-output=snyk-raw.sarif
 
       - name: Normalize Snyk SARIF categories
-        if: ${{ always() && secrets.SNYK_TOKEN != '' && hashFiles('snyk-raw.sarif') != '' }}
+        if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk-raw.sarif') != '' }}
         env:
           SARIF_PREFIX: snyk-${{ github.event_name == 'pull_request' && 'pr' || 'prod' }}-${{ needs.extract-version.outputs.version }}-${{ github.run_id }}
         run: |
@@ -201,7 +203,7 @@ jobs:
           PY
 
       - name: Upload Snyk results to GitHub Security tab
-        if: ${{ always() && secrets.SNYK_TOKEN != '' && hashFiles('snyk.sarif') != '' }}
+        if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk.sarif
