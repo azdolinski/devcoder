@@ -181,10 +181,10 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           image: ${{ needs.extract-version.outputs.image-ref }}
-          args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile --sarif-file-output=snyk.sarif
+          args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile --sarif-file-output=snyk-raw.sarif
 
       - name: Normalize Snyk SARIF categories
-        if: ${{ always() && steps.check-snyk.outputs.snyk_available == 'true' && hashFiles('snyk.sarif') != '' }}
+        if: ${{ always() && steps.check-snyk.outputs.snyk_available == 'true' && hashFiles('snyk-raw.sarif') != '' }}
         env:
           SCAN_ENV: ${{ github.event_name == 'pull_request' && 'pr' || 'prod' }}
           SCAN_TAG: ${{ needs.extract-version.outputs.version }}
@@ -195,8 +195,10 @@ jobs:
           import os
           import re
 
-          path = 'snyk.sarif'
-          with open(path, 'r', encoding='utf-8') as f:
+          src_path = 'snyk-raw.sarif'
+          dst_path = 'snyk.sarif'
+
+          with open(src_path, 'r', encoding='utf-8') as f:
             sarif = json.load(f)
 
           runs = sarif.get('runs')
@@ -213,7 +215,7 @@ jobs:
             run.setdefault('automationDetails', {})
             run['automationDetails']['id'] = f"{sanitize(prefix)}-{i}"
 
-          with open(path, 'w', encoding='utf-8') as f:
+          with open(dst_path, 'w', encoding='utf-8') as f:
             json.dump(sarif, f)
           PY
 
