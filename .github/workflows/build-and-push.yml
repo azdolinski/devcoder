@@ -161,6 +161,14 @@ jobs:
           provenance: true
           sbom: true
 
+      - name: Wait for registry propagation
+        if: github.event.inputs.security_scan != 'false'
+        run: |
+          echo "⏳ Waiting 90 seconds for image to propagate in ghcr.io registry..."
+          echo "This ensures security scans can pull the image successfully"
+          sleep 90
+          echo "✅ Registry propagation wait complete"
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -198,14 +206,6 @@ jobs:
           sarif_file: 'grype-results.sarif'
           category: 'grype'
         timeout-minutes: 5
-
-      - name: Wait for registry propagation
-        if: github.event.inputs.security_scan != 'false'
-        run: |
-          echo "⏳ Waiting 90 seconds for image to propagate in ghcr.io registry..."
-          echo "This ensures security scans can pull the image successfully"
-          sleep 90
-          echo "✅ Registry propagation wait complete"
 
       - name: Job Summary
         run: |
