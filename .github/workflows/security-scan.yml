@@ -147,9 +147,10 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-  snyk-scan:
+  snyk-container:
     runs-on: ubuntu-latest
     needs: extract-version
+    name: Snyk Container - Docker Image Scanning
     environment: prod
     permissions:
       contents: read
@@ -161,15 +162,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare image
+      - name: Build Docker image
         if: ${{ env.SNYK_TOKEN != '' }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then IMAGE_REF=devcoder-test; else IMAGE_REF="${{ needs.extract-version.outputs.image-ref }}"; fi
-          if [ -z "$IMAGE_REF" ]; then echo "Missing image reference" >&2; exit 1; fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            IMAGE_REF=devcoder-test
+          else
+            IMAGE_REF="${{ needs.extract-version.outputs.image-ref }}"
+          fi
+          if [ -z "$IMAGE_REF" ]; then
+            echo "Missing image reference" >&2
+            exit 1
+          fi
           echo "IMAGE_REF=$IMAGE_REF" >> $GITHUB_ENV
           docker build -t "$IMAGE_REF" .
 
-      - name: Run Snyk to check Docker image for vulnerabilities
+      - name: Run Snyk Container scan
         if: ${{ env.SNYK_TOKEN != '' }}
         continue-on-error: true
         uses: snyk/actions/docker@master
@@ -177,37 +185,14 @@ jobs:
           SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
         with:
           image: ${{ env.IMAGE_REF }}
-          args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile --sarif-file-output=snyk-raw.sarif
+          args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile --sarif-file-output=snyk-container.sarif
 
-      - name: Normalize Snyk SARIF categories
-        if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk-raw.sarif') != '' }}
-        env:
-          SARIF_PREFIX: snyk-${{ github.event_name == 'pull_request' && 'pr' || 'prod' }}-${{ needs.extract-version.outputs.version }}-${{ github.run_id }}
-        run: |
-          python - <<'PY'
-          import json, os
-          sarif = json.load(open('snyk-raw.sarif', 'r', encoding='utf-8'))
-          runs = sarif.get('runs')
-          if not isinstance(runs, list) or not runs: raise SystemExit(0)
-          merged = runs[0]
-          merged.setdefault('results', [])
-          for run in runs[1:]:
-            results = run.get('results')
-            if isinstance(results, list): merged['results'].extend(results)
-          for res in merged['results']:
-            if isinstance(res, dict): res.pop('ruleIndex', None)
-          merged.setdefault('automationDetails', {})
-          merged['automationDetails']['id'] = os.getenv('SARIF_PREFIX', 'snyk')
-          sarif['runs'] = [merged]
-          json.dump(sarif, open('snyk-normalized.sarif', 'w', encoding='utf-8'))
-          PY
-
-      - name: Upload Snyk results to GitHub Security tab
-        if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk-normalized.sarif') != '' }}
+      - name: Upload Snyk Container results to GitHub Security tab
+        if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk-container.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: snyk-normalized.sarif
-          category: snyk-${{ github.event_name == 'pull_request' && 'pr' || 'prod' }}-${{ needs.extract-version.outputs.version }}-${{ github.run_id }}
+          sarif_file: snyk-container.sarif
+          category: snyk-container
 
   dockle-scan:
     runs-on: ubuntu-latest
@@ -242,7 +227,7 @@ jobs:
 
   generate-report:
     runs-on: ubuntu-latest
-    needs: [extract-version, trivy-scan, snyk-scan, dockle-scan]
+    needs: [extract-version, trivy-scan, snyk-container, dockle-scan]
     if: ${{ always() && needs.trivy-scan.result == 'success' }}
     
     steps:
@@ -263,9 +248,9 @@ jobs:
             echo "" >> security-report.md
           fi
           
-          if [ -f "snyk.sarif" ]; then
-            echo "## Snyk Security Scan Results" >> security-report.md
-            echo "Snyk scan completed. Check the 'Security' tab for detailed results." >> security-report.md
+          if [ -f "snyk-container.sarif" ]; then
+            echo "## Snyk Container Security Scan Results" >> security-report.md
+            echo "Snyk container scan completed. Check the 'Security' tab for detailed results." >> security-report.md
             echo "" >> security-report.md
           fi
           
