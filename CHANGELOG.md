@@ -21,6 +21,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.14] - 2026-01-22
+
+### Added 🆕
+- 📚 **Documentation**: Complete guide for Docker tagging and versioning best practices
+  - Added comprehensive "Version Prefix (v) Best Practices" section
+  - Documented Git tags (with `v`) vs Docker tags (without `v`) conventions
+  - Updated workflow examples to match current implementation
+
+### Fixed 🐛
+-
+
+### Changed 🔄
+- 🔧 **Workflows**: Updated documentation to reflect actual workflow implementation
+  - Added `workflow_dispatch` trigger documentation
+  - Documented `environment: prod` usage
+  - Clarified `value` parameter requirement for `docker/metadata-action`
+
+### Security 🔒
+-
+
+---
+
 ## [0.6.13] - 2026-01-22
 
 ### Added 🆕

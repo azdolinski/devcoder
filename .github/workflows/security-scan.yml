@@ -92,7 +92,9 @@ jobs:
           TAG="${{ steps.get_tag.outputs.TAG }}"
 
           if [ -n "$TAG" ]; then
-            VERSION=$TAG
+            # Strip 'v' prefix from Git tag for Docker image reference
+            # Git: v0.6.13 → Docker: 0.6.13
+            VERSION=${TAG#v}
             IMAGE_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
           elif [[ "${{ github.event.inputs.image_ref }}" != "" ]]; then
             IMAGE_REF=${{ github.event.inputs.image_ref }}

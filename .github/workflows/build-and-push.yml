@@ -131,7 +131,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}},value=${{ steps.get_tag.outputs.TAG }},prerelease=true
+            type=semver,pattern={{version}},value=${{ steps.get_tag.outputs.TAG }}
 
       - name: Build and push (Stable)
         if: steps.stable.outputs.IS_STABLE == 'true'
