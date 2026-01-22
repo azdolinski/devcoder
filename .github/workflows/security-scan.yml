@@ -199,14 +199,14 @@ jobs:
           merged.setdefault('automationDetails', {})
           merged['automationDetails']['id'] = os.getenv('SARIF_PREFIX', 'snyk')
           sarif['runs'] = [merged]
-          json.dump(sarif, open('snyk.sarif', 'w', encoding='utf-8'))
+          json.dump(sarif, open('snyk-normalized.sarif', 'w', encoding='utf-8'))
           PY
 
       - name: Upload Snyk results to GitHub Security tab
-        if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk.sarif') != '' }}
+        if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk-normalized.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: snyk.sarif
+          sarif_file: snyk-normalized.sarif
           category: snyk-${{ github.event_name == 'pull_request' && 'pr' || 'prod' }}-${{ needs.extract-version.outputs.version }}-${{ github.run_id }}
 
   dockle-scan:
