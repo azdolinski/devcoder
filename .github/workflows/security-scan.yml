@@ -90,23 +90,27 @@ jobs:
         id: version
         run: |
           TAG="${{ steps.get_tag.outputs.TAG }}"
+          echo "DEBUG: Raw TAG from get_tag: '$TAG'"
 
           if [ -n "$TAG" ]; then
             # Strip 'v' prefix from Git tag for Docker image reference
             # Git: v0.6.13 → Docker: 0.6.13
             VERSION=${TAG#v}
+            echo "DEBUG: Stripped version: '$VERSION'"
             IMAGE_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
           elif [[ "${{ github.event.inputs.image_ref }}" != "" ]]; then
             IMAGE_REF=${{ github.event.inputs.image_ref }}
             VERSION="manual"
+            echo "DEBUG: Using manual image_ref: '$IMAGE_REF'"
           else
             VERSION=$(node -e "console.log(require('./version.json').version)" 2>/dev/null || echo "latest")
             IMAGE_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
+            echo "DEBUG: Using fallback version: '$VERSION'"
           fi
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "image-ref=$IMAGE_REF" >> $GITHUB_OUTPUT
-          echo "Using image reference: $IMAGE_REF"
+          echo "✅ Using image reference: $IMAGE_REF"
 
   trivy-scan:
     runs-on: ubuntu-latest
@@ -116,6 +120,12 @@ jobs:
       security-events: write
     
     steps:
+      - name: Wait for image to be available in registry
+        run: |
+          echo "⏳ Waiting 90 seconds for image to propagate in registry..."
+          echo "Image to scan: ${{ needs.extract-version.outputs.image-ref }}"
+          sleep 90
+          echo "✅ Wait complete, proceeding with scan"
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -161,6 +171,13 @@ jobs:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     
     steps:
+      - name: Wait for image to be available in registry
+        run: |
+          echo "⏳ Waiting 90 seconds for image to propagate in registry..."
+          echo "Image to scan: ${{ needs.extract-version.outputs.image-ref }}"
+          sleep 90
+          echo "✅ Wait complete, proceeding with scan"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -226,6 +243,13 @@ jobs:
     needs: extract-version
     
     steps:
+      - name: Wait for image to be available in registry
+        run: |
+          echo "⏳ Waiting 90 seconds for image to propagate in registry..."
+          echo "Image to scan: ${{ needs.extract-version.outputs.image-ref }}"
+          sleep 90
+          echo "✅ Wait complete, proceeding with scan"
+
       - name: Checkout
         uses: actions/checkout@v4
 
