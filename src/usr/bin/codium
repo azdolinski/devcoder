@@ -10,16 +10,14 @@ fi
 
 mkdir -p "$HOME/.codium"
 
-if [[ "$(id -u)" -eq 0 ]]; then
-  exec dbus-launch "$BIN" \
-    --disable-telemetry \
-    --no-sandbox \
-    --user-data-dir="$HOME/.codium" \
-    "$@"
-else
-  exec dbus-launch "$BIN" \
-    --disable-telemetry \
-    --no-sandbox \
-    --user-data-dir="$HOME/.codium" \
-    "$@"
+# Only cd to .codium if no arguments provided
+if [[ $# -eq 0 ]]; then
+  cd $HOME
 fi
+
+exec dbus-launch "$BIN" \
+  --user-data-dir="$HOME/.codium" \
+  --disable-telemetry \
+  --no-sandbox \
+  --password-store="gnome-libsecret" \
+  "$@"

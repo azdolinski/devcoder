@@ -21,6 +21,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.10] - 2026-01-22
+
+### Added 🆕
+- 🔗 **code-server symlink**: Added `/usr/bin/code-server` symlink pointing to `/usr/bin/codium` for compatibility
+- 📁 **Chrome directory**: Created `/opt/google/chrome` directory structure for compatibility
+- 🔗 **Chrome symlink**: Added symlink from `/usr/bin/chromium` to `/opt/google/chrome/chrome` for tools expecting Google Chrome
+
+### Changed 🔄
+- 🐟 **Core dumps**: Added `core.*` pattern to `.gitignore` to exclude core dump files
+- 🔧 **VSCodium wrapper**: Simplified codium launcher - removed duplicate root/user logic, added automatic `$HOME` directory change when launched without arguments
+- 🖥️ **Openbox menu**: Removed `--password-store="gnome-libsecret"` flag from VSCodium menu entry (moved to wrapper)
+- 🔐 **SSHD service**: Changed from oneshot to longrunning service - now properly keeps SSHD running in foreground
+- ⚙️ **Syncthing default**: Changed `SYNCTHING_ENABLED` default from `true` to `false` (users must explicitly enable)
+- 🔧 **Dockerfile**: Added symlinks for code-server and Chrome during build
+
+### Removed 🗑️
+- 📄 **code-server wrapper**: Removed duplicate `/usr/bin/code-server` script (now symlinked to codium wrapper)
+
+### Fixed 🐛
+- 🐛 **SSHD startup**: Fixed SSHD service to properly run as longrunning process instead of oneshot initialization
+
+---
+
 ## [0.6.9] - 2026-01-21
 
 ### Added 🆕

@@ -4,7 +4,7 @@
 # Syncthing service
 # Runs as the user defined in the container (usually abc)
 
-SYNCTHING_ENABLED="${SYNCTHING_ENABLED:-true}"
+SYNCTHING_ENABLED="${SYNCTHING_ENABLED:-false}"
 SYNCTHING_HOME="${SYNCTHING_HOME:-/config/syncthing}"
 SYNCTHING_DATA="${SYNCTHING_DATA:-/config/syncthing/data}"
 
