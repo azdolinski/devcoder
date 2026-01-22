@@ -175,16 +175,17 @@ jobs:
 
       - name: Run Snyk to check Docker image for vulnerabilities
         if: steps.check-snyk.outputs.snyk_available == 'true'
+        continue-on-error: true
         uses: snyk/actions/docker@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           image: ${{ needs.extract-version.outputs.image-ref }}
-          args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile
+          args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile --sarif-file-output=snyk.sarif
 
       - name: Upload Snyk results to GitHub Security tab
-        if: steps.check-snyk.outputs.snyk_available == 'true'
-        uses: github/codeql-action/upload-sarif@v3
+        if: ${{ always() && steps.check-snyk.outputs.snyk_available == 'true' && hashFiles('snyk.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk.sarif
 
