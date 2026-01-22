@@ -208,11 +208,11 @@ class WorkflowAnalyzer:
         lines.append("    %% GitHub Actions Workflow Dependency Diagram")
         lines.append("")
 
-        # Styles
-        lines.append("    classDef workflow fill:#e1f5fe,stroke:#01579b,stroke-width:2px")
-        lines.append("    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px")
-        lines.append("    classDef job fill:#f3e5f5,stroke:#4a148c,stroke-width:2px")
-        lines.append("    classDef dataFlow fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px,stroke-dasharray: 5 5")
+        # Styles - dark text for better readability
+        lines.append("    classDef workflow fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000")
+        lines.append("    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000")
+        lines.append("    classDef job fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000")
+        lines.append("    classDef dataFlow fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px,stroke-dasharray: 5 5,color:#000000")
         lines.append("")
 
         # Create subgraphs for each workflow
