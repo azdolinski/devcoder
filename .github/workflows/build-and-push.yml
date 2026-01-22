@@ -14,6 +14,11 @@ on:
         description: 'Tag to build (e.g., v0.6.12)'
         required: true
         type: string
+      security_scan:
+        description: 'Run security scan after build'
+        required: false
+        type: boolean
+        default: true
 
 env:
   REGISTRY: ghcr.io
@@ -22,6 +27,8 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      run_security_scan: ${{ steps.set_scan_flag.outputs.run_security_scan }}
     environment: prod
     timeout-minutes: 120
     permissions:
@@ -60,6 +67,19 @@ jobs:
             echo "REF_NAME=$TAG" >> $GITHUB_OUTPUT
           fi
           echo "Using tag: $TAG"
+
+      - name: Set security scan flag
+        id: set_scan_flag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Use the input value from manual trigger
+            RUN_SCAN="${{ github.event.inputs.security_scan == 'true' }}"
+          else
+            # Always run scan for automated builds
+            RUN_SCAN="true"
+          fi
+          echo "run_security_scan=$RUN_SCAN" >> $GITHUB_OUTPUT
+          echo "Security scan enabled: $RUN_SCAN"
 
       - name: Determine if stable release
         id: stable
