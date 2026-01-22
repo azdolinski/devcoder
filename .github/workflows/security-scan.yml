@@ -24,13 +24,13 @@ on:
       severity:
         description: 'Minimum severity level to report'
         required: false
-        default: 'MEDIUM'
+        default: 'medium'
         type: choice
         options:
-        - CRITICAL
-        - HIGH
-        - MEDIUM
-        - LOW
+        - critical
+        - high
+        - medium
+        - low
 
 env:
   REGISTRY: ghcr.io
@@ -170,7 +170,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           image: ${{ needs.extract-version.outputs.image-ref }}
-          args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile --severity-threshold=${{ github.event.inputs.severity || 'medium' }}
+          args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile
 
       - name: Upload Snyk results to GitHub Security tab
         if: steps.check-snyk.outputs.snyk_available == 'true'
