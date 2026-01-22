@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added 🆕
+-
+
+### Fixed 🐛
+-
+
+### Changed 🔄
+-
+
+### Security 🔒
+-
+
+---
+
+## [0.6.13] - 2026-01-22
+
+### Added 🆕
 - 🔐 **SSHD PermitRootLogin**: New `SSHD_PERMITROOTLOGIN` env var to allow root SSH login
   - Default: `false` (root login disabled)
   - Set to `true` to enable `PermitRootLogin yes` in sshd_config
