@@ -1,6 +1,10 @@
 name: Build and Push Docker Image
 
 on:
+  workflow_run:
+    workflows: ["Detect Release from CHANGELOG"]
+    types:
+      - completed
   push:
     tags:
       - 'v*'
@@ -23,11 +27,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Get tag from workflow_run or current event
+        id: get_tag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_run" ]; then
+            # Get the tag that was created in the detect-release workflow
+            echo "Triggered by workflow_run, fetching tag..."
+            TAG=$(git -c 'versionsort.suffix=-alpha' -c 'versionsort.suffix=-beta' \
+              ls-remote --tags --sort=-v:refname origin \
+              | grep 'refs/tags/v' \
+              | head -1 \
+              | awk '{print $2}' \
+              | sed 's/refs\/tags\///')
+            echo "TAG=$TAG" >> $GITHUB_OUTPUT
+            echo "REF_NAME=$TAG" >> $GITHUB_OUTPUT
+          else
+            # Normal tag push event
+            TAG="${{ github.ref_name }}"
+            echo "TAG=$TAG" >> $GITHUB_OUTPUT
+            echo "REF_NAME=$TAG" >> $GITHUB_OUTPUT
+          fi
+          echo "Using tag: $TAG"
+
       - name: Determine if stable release
         id: stable
         run: |
-          TAG="${{ github.ref }}"
-          TAG_NAME="${TAG#refs/tags/}"
+          TAG="${{ steps.get_tag.outputs.TAG }}"
+          TAG_NAME="${{ steps.get_tag.outputs.REF_NAME }}"
 
           # Check if tag matches vX.X.X (stable) or vX.X.X-* (pre-release)
           # Stable: v1.0.0, v2.0.1, v10.20.30
@@ -106,7 +132,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.REF_NAME }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           scan-type: 'image'
@@ -126,7 +152,7 @@ jobs:
         uses: anchore/scan-action@v4
         id: grype
         with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.REF_NAME }}
           output-format: 'sarif'
           fail-build: false
           severity-cutoff: 'high'
@@ -176,5 +202,5 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Pull commands:" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.REF_NAME }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
