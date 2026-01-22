@@ -38,7 +38,8 @@ jobs:
               | grep 'refs/tags/v' \
               | head -1 \
               | awk '{print $2}' \
-              | sed 's/refs\/tags\///')
+              | sed 's/refs\/tags\///' \
+              | tr -d '{}')
             echo "TAG=$TAG" >> $GITHUB_OUTPUT
             echo "REF_NAME=$TAG" >> $GITHUB_OUTPUT
           else
