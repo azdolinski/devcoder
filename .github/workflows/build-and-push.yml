@@ -119,9 +119,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${{ steps.get_tag.outputs.TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.get_tag.outputs.TAG }}
+            type=semver,pattern={{major}},value=${{ steps.get_tag.outputs.TAG }}
             type=raw,value=latest
 
       - name: Extract metadata (Pre-Release)
@@ -131,7 +131,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}},prerelease=true
+            type=semver,pattern={{version}},value=${{ steps.get_tag.outputs.TAG }},prerelease=true
 
       - name: Build and push (Stable)
         if: steps.stable.outputs.IS_STABLE == 'true'
