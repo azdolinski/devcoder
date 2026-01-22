@@ -188,15 +188,29 @@ jobs:
           args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile
           sarif: true
 
-      - name: Rename SARIF for distinct category
-        if: ${{ always() && env.SNYK_TOKEN != '' }}
+      - name: Debug SARIF structure
+        if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk.sarif') != '' }}
         run: |
-          if [ -f "snyk.sarif" ]; then
-            mv snyk.sarif snyk-container.sarif
-            echo "✅ Renamed snyk.sarif → snyk-container.sarif"
-          else
-            echo "⚠️ snyk.sarif not found, skipping rename"
-          fi
+          echo "📊 SARIF file structure:"
+          echo "  Runs count: $(jq '.runs | length' snyk.sarif)"
+          echo "  Tools: $(jq -r '.runs[].tool.driver.name' snyk.sarif | paste -sd ',' -)"
+          echo "  Results per run: $(jq '.runs[].results | length' snyk.sarif | paste -sd ',' -)"
+
+      - name: Install SARIF SDK
+        if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk.sarif') != '' }}
+        run: dotnet tool install --global Microsoft.CodeAnalysis.Sarif.Multitool
+
+      - name: Merge SARIF runs using official SARIF SDK
+        if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk.sarif') != '' }}
+        run: |
+          sarif merge snyk.sarif \
+            --merge-runs \
+            --output-file snyk-container.sarif \
+            --log "Optimize;Minify"
+          
+          echo "✅ Merged SARIF runs → snyk-container.sarif"
+          echo "  Final runs count: $(jq '.runs | length' snyk-container.sarif)"
+          echo "  Final results count: $(jq '.runs[0].results | length' snyk-container.sarif)"
 
       - name: Upload Snyk Container results to GitHub Security tab
         if: ${{ always() && env.SNYK_TOKEN != '' && hashFiles('snyk-container.sarif') != '' }}
