@@ -8,6 +8,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g., v0.6.12)'
+        required: true
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -40,6 +46,11 @@ jobs:
               | awk '{print $2}' \
               | sed 's/refs\/tags\///' \
               | tr -d '{}^')
+            echo "TAG=$TAG" >> $GITHUB_OUTPUT
+            echo "REF_NAME=$TAG" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manual workflow dispatch with tag input
+            TAG="${{ github.event.inputs.tag }}"
             echo "TAG=$TAG" >> $GITHUB_OUTPUT
             echo "REF_NAME=$TAG" >> $GITHUB_OUTPUT
           else
