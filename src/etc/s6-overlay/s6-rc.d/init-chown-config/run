@@ -41,4 +41,12 @@ if [ -n "$ROOT_PASSWORD" ]; then
     echo "Root password set successfully"
 fi
 
+# Set abc user password if ABC_PASSWORD is defined and not empty
+ABC_PASSWORD="${ABC_PASSWORD:-}"
+if [ -n "$ABC_PASSWORD" ]; then
+    echo "Setting abc user password"
+    echo_legacy "abc:$ABC_PASSWORD" | chpasswd
+    echo "Abc user password set successfully"
+fi
+
 echo "Completed init-chown-config"

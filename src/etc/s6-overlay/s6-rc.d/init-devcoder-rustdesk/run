@@ -221,9 +221,9 @@ install_rustdesk_system() {
   echo "**** Installing RustDesk ****"
   echo "Running: dpkg -i $DOWNLOAD_DIR/$RUSTDESK_DEB"
   if ! run_as_root dpkg -i "$DOWNLOAD_DIR/$RUSTDESK_DEB"; then
-    echo "Warning: dpkg installation had issues, but RustDesk may still work"
-    echo "Attempting to fix dependencies..."
-    run_as_root apt-get install -f -y || echo "Warning: apt-get fix failed"
+    echo "Error: dpkg installation failed"
+    echo "Dependencies should have been installed by init-devcoder-mods-apt-installer"
+    return 1
   fi
 
   echo "**** RustDesk installed successfully ****"

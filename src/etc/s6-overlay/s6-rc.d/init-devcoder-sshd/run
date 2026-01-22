@@ -37,10 +37,23 @@ while ! command -v sshd >/dev/null 2>&1; do
 done
 
 
+
+# Ensure sshd user exists (created by openssh-server package)
+waited=0
+while ! id sshd >/dev/null 2>&1; do
+  if (( waited >= 30 )); then
+    echo "⚠️  sshd user not created after 30 seconds."
+    exit 1
+  fi
+  sleep 1
+  ((waited++))
+done
+
+
 if [ ! -f "/etc/ssh/ssh_host_rsa_key" ]; then
   ssh-keygen -A
 fi
 
-mkdir -p /run/
-echo "✅ Starting SSHD on port $SSHD_PORT..."
-exec /usr/sbin/sshd -D -p "$SSHD_PORT"
+
+mkdir -p /run/sshd
+echo "✅ SSHD environment prepared. Service will start via svc-devcoder-sshd."
