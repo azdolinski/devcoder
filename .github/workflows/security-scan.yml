@@ -1,6 +1,10 @@
 name: Container Security Scan
 
 on:
+  workflow_run:
+    workflows: ["Build and Push Docker Image"]
+    types:
+      - completed
   push:
     tags:
       - 'v*'
@@ -38,25 +42,57 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       image-ref: ${{ steps.version.outputs.image-ref }}
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Get tag from workflow_run or current event
+        id: get_tag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_run" ]; then
+            # Get the tag that was created in the build workflow
+            echo "Triggered by workflow_run, fetching tag..."
+            TAG=$(git -c 'versionsort.suffix=-alpha' -c 'versionsort.suffix=-beta' \
+              ls-remote --tags --sort=-v:refname origin \
+              | grep 'refs/tags/v' \
+              | head -1 \
+              | awk '{print $2}' \
+              | sed 's/refs\/tags\///' \
+              | tr -d '{}')
+            echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
+            # Normal tag push event
+            TAG="${{ github.ref_name }}"
+            echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.inputs.image_ref }}" != "" ]]; then
+            # Manual workflow dispatch with image reference
+            TAG=""
+            echo "TAG=" >> $GITHUB_OUTPUT
+          else
+            # Pull request or other event
+            VERSION=$(node -e "console.log(require('./version.json').version)" 2>/dev/null || echo "latest")
+            TAG="$VERSION"
+            echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          fi
+          echo "Using tag: $TAG"
+
       - name: Extract version and image reference
         id: version
         run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION=${{ github.ref_name }}
+          TAG="${{ steps.get_tag.outputs.TAG }}"
+
+          if [ -n "$TAG" ]; then
+            VERSION=$TAG
             IMAGE_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
           elif [[ "${{ github.event.inputs.image_ref }}" != "" ]]; then
             IMAGE_REF=${{ github.event.inputs.image_ref }}
             VERSION="manual"
           else
-            VERSION=$(node -e "console.log(require('./version.json').version)")
+            VERSION=$(node -e "console.log(require('./version.json').version)" 2>/dev/null || echo "latest")
             IMAGE_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
           fi
-          
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "image-ref=$IMAGE_REF" >> $GITHUB_OUTPUT
           echo "Using image reference: $IMAGE_REF"
@@ -79,7 +115,7 @@ jobs:
           echo "IMAGE_REF=devcoder-test" >> $GITHUB_ENV
 
       - name: Build image for scanning (for tags)
-        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_run') && needs.extract-version.outputs.image-ref != '' }}
         run: |
           docker build -t ${{ needs.extract-version.outputs.image-ref }} .
           echo "IMAGE_REF=${{ needs.extract-version.outputs.image-ref }}" >> $GITHUB_ENV
@@ -123,7 +159,7 @@ jobs:
           fi
 
       - name: Build image for Snyk scanning (for tags)
-        if: ${{ steps.check-snyk.outputs.snyk_available == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ steps.check-snyk.outputs.snyk_available == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_run') && needs.extract-version.outputs.image-ref != '' }}
         run: |
           docker build -t ${{ needs.extract-version.outputs.image-ref }} .
 
@@ -134,7 +170,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           image: ${{ needs.extract-version.outputs.image-ref }}
-          args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile
+          args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile --severity-threshold=${{ github.event.inputs.severity || 'medium' }}
 
       - name: Upload Snyk results to GitHub Security tab
         if: steps.check-snyk.outputs.snyk_available == 'true'
@@ -156,7 +192,7 @@ jobs:
           docker build -t devcoder-test .
 
       - name: Build image for Dockle scanning (for tags)
-        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_run') && needs.extract-version.outputs.image-ref != '' }}
         run: |
           docker build -t ${{ needs.extract-version.outputs.image-ref }} .
 
