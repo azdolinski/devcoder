@@ -1,0 +1,251 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+set -euo pipefail
+set +H  # Disable history expansion to avoid issues with ! in commands
+
+source /etc/s6-overlay/s6-rc.d/echo_module.sh
+set_module_name "init-devcoder-rustdesk"
+
+echo "▶️  Start installer"
+
+# Check installation method
+RUSTDESK_INSTALL_METHOD="${RUSTDESK_INSTALL:-false}"
+
+if [ "$RUSTDESK_INSTALL_METHOD" = "false" ]; then
+  echo "RUSTDESK_INSTALL not enabled; skipping."
+  exit 0
+fi
+
+run_as_root() {
+  if [ "$(id -u)" = "0" ]; then
+    "$@"
+    return
+  fi
+  if command -v sudo >/dev/null 2>&1; then
+    sudo -E "$@"
+    return
+  fi
+  if command -v su >/dev/null 2>&1; then
+    su -s /bin/bash root -c "$(printf '%q ' "$@")"
+    return
+  fi
+  "$@"
+}
+
+run_as_user() {
+  if id -u "$TARGET_USER" >/dev/null 2>&1; then
+    if [ "$(id -u)" = "$(id -u "$TARGET_USER")" ]; then
+      "$@"
+      return
+    fi
+    if command -v sudo >/dev/null 2>&1; then
+      /usr/bin/sudo -E -u "$TARGET_USER" env PATH="$PATH" "$@"
+      return
+    fi
+    if command -v su >/dev/null 2>&1; then
+      su -s /bin/bash "$TARGET_USER" -c "$(printf '%q ' "$@")"
+      return
+    fi
+    if command -v s6-setuidgid >/dev/null 2>&1; then
+      s6-setuidgid "$TARGET_USER" "$@"
+      return
+    fi
+  fi
+  "$@"
+}
+
+# Determine target user
+TARGET_USER="${CUSTOM_USER:-abc}"
+if id "$TARGET_USER" >/dev/null 2>&1; then
+  TARGET_UID=$(id -u "$TARGET_USER")
+  TARGET_GID=$(id -g "$TARGET_USER")
+  TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
+else
+  TARGET_UID=911
+  TARGET_GID=911
+  TARGET_HOME="$HOME"
+fi
+
+# Install RustDesk using PRoot Apps
+install_rustdesk_proot() {
+  echo "**** Installing RustDesk via PRoot Apps ****"
+
+  # Check if proot-apps is already installed
+  if ! command -v proot-apps >/dev/null 2>&1; then
+    echo "**** Installing PRoot Apps ****"
+    mkdir -p "$TARGET_HOME/.local/bin"
+
+    # Fetch latest proot-apps version
+    PROOT_APPS_VERSION=$(curl -sX GET "https://api.github.com/repos/linuxserver/proot-apps/releases/latest" | awk '/tag_name/{print $4;exit}' FS='[""]')
+
+    if [ -z "$PROOT_APPS_VERSION" ]; then
+      echo "Failed to fetch PRoot Apps version"
+      return 1
+    fi
+
+    echo "Downloading PRoot Apps version: $PROOT_APPS_VERSION"
+
+    # Download and install proot-apps
+    ARCH=$(uname -m)
+    if ! curl -L "https://github.com/linuxserver/proot-apps/releases/download/${PROOT_APPS_VERSION}/proot-apps-${ARCH}.tar.gz" | tar -xzf - -C "$TARGET_HOME/.local/bin/"; then
+      echo "Failed to download PRoot Apps"
+      return 1
+    fi
+
+    # Ensure proper ownership
+    run_as_root chown -R "$TARGET_UID:$TARGET_GID" "$TARGET_HOME/.local/bin"
+
+    # Add to PATH if not already there
+    if ! grep -q "$TARGET_HOME/.local/bin" /var/run/s6/container_environment/PATH 2>/dev/null; then
+      export PATH="$TARGET_HOME/.local/bin:$PATH"
+    fi
+
+    echo "**** PRoot Apps installed successfully ****"
+  else
+    echo "**** PRoot Apps already installed ****"
+  fi
+
+  # Ensure proot-apps is in PATH
+  export PATH="$TARGET_HOME/.local/bin:$PATH"
+
+  # Check if RustDesk is already installed via proot-apps
+  if [ -d "$TARGET_HOME/proot-apps/rustdesk" ]; then
+    echo "**** RustDesk (PRoot) already installed, skipping ****"
+    return 0
+  fi
+
+  echo "**** Installing RustDesk via PRoot Apps ****"
+  # Install RustDesk using proot-apps (run from /config to store images there)
+  (cd "$TARGET_HOME" && run_as_user proot-apps install rustdesk) || return 1
+  echo "**** RustDesk installed successfully via PRoot Apps ****"
+  return 0
+}
+
+# Install RustDesk using system package (deb)
+install_rustdesk_system() {
+  echo "**** Installing RustDesk via system package ****"
+
+  # Determine architecture
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    x86_64)
+      RUSTDESK_ARCH="x86_64"
+      ;;
+    aarch64|arm64)
+      RUSTDESK_ARCH="aarch64"
+      ;;
+    armv7l|armv7)
+      RUSTDESK_ARCH="armv7-sciter"
+      ;;
+    *)
+      echo "Unsupported architecture: $ARCH"
+      return 1
+      ;;
+  esac
+
+  echo "Detected architecture: $ARCH (using $RUSTDESK_ARCH for RustDesk)"
+
+  # Check if RustDesk is already installed
+  if command -v rustdesk >/dev/null 2>&1; then
+    echo "**** RustDesk already installed, skipping ****"
+    return 0
+  fi
+
+  echo "**** Adding gstreamer1.0-pipewire to APT install queue (will pull all RustDesk dependencies) ****"
+  echo_legacy "gstreamer1.0-pipewire" >> /devcoder-apt-rustdesk.txt
+
+  # Determine the library path based on architecture
+  local gst_lib_path
+  case "$ARCH" in
+    x86_64)
+      gst_lib_path="/usr/lib/x86_64-linux-gnu/gstreamer-1.0/libgstpipewire.so"
+      ;;
+    aarch64|arm64)
+      gst_lib_path="/usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstpipewire.so"
+      ;;
+    armv7l|armv7)
+      gst_lib_path="/usr/lib/arm-linux-gnueabihf/gstreamer-1.0/libgstpipewire.so"
+      ;;
+    *)
+      gst_lib_path="/usr/lib/*/gstreamer-1.0/libgstpipewire.so"
+      ;;
+  esac
+
+  echo "**** Fetching latest RustDesk version from GitHub ****"
+
+  # Fetch latest version info from GitHub API
+  LATEST_VERSION=$(curl -s "https://api.github.com/repos/rustdesk/rustdesk/releases/latest" | grep -oP '"tag_name":\s*"\K[^"]*' || echo "")
+
+  if [ -z "$LATEST_VERSION" ]; then
+    echo "Failed to fetch latest version from GitHub API"
+    return 1
+  fi
+
+  echo "Latest RustDesk version: $LATEST_VERSION"
+
+  RUSTDESK_DEB="rustdesk-${LATEST_VERSION}-${RUSTDESK_ARCH}.deb"
+  RUSTDESK_URL="https://github.com/rustdesk/rustdesk/releases/download/${LATEST_VERSION}/${RUSTDESK_DEB}"
+
+  echo "Download URL: $RUSTDESK_URL"
+
+  # Create download directory
+  DOWNLOAD_DIR="/config/Downloads"
+  if [ ! -d "$DOWNLOAD_DIR" ]; then
+    echo "**** Creating download directory: $DOWNLOAD_DIR ****"
+    mkdir -p "$DOWNLOAD_DIR"
+    run_as_root chown -R "$TARGET_UID:$TARGET_GID" "$DOWNLOAD_DIR"
+  fi
+
+  echo "**** Downloading RustDesk to $DOWNLOAD_DIR ****"
+  if ! curl -fsSL "$RUSTDESK_URL" -o "$DOWNLOAD_DIR/$RUSTDESK_DEB"; then
+    echo "Failed to download RustDesk from $RUSTDESK_URL"
+    return 1
+  fi
+
+  # Wait for APT installer to finish installing dependencies (max 60 seconds)
+  echo "**** Waiting for APT dependencies to be installed ****"
+  local waited=0
+  while [ ! -f "$gst_lib_path" ]; do
+    if (( waited >= 60 )); then
+      echo "Warning: gstreamer1.0-pipewire not installed after 60 seconds. Continuing anyway..."
+      break
+    fi
+    sleep 1
+    ((waited++)) || true
+    if (( waited % 10 == 0 )); then
+      echo "Still waiting for dependencies... (${waited}s)"
+    fi
+  done
+  echo "Dependencies installed or timeout reached"
+
+  echo "**** Installing RustDesk ****"
+  echo "Running: dpkg -i $DOWNLOAD_DIR/$RUSTDESK_DEB"
+  if ! run_as_root dpkg -i "$DOWNLOAD_DIR/$RUSTDESK_DEB"; then
+    echo "Warning: dpkg installation had issues, but RustDesk may still work"
+    echo "Attempting to fix dependencies..."
+    run_as_root apt-get install -f -y || echo "Warning: apt-get fix failed"
+  fi
+
+  echo "**** RustDesk installed successfully ****"
+  if command -v rustdesk >/dev/null 2>&1; then
+    rustdesk --version || echo "RustDesk binary found at $(command -v rustdesk)"
+  else
+    echo "Warning: rustdesk command not found in PATH after installation"
+  fi
+}
+
+# Main installation logic
+case "$RUSTDESK_INSTALL_METHOD" in
+  proot)
+    install_rustdesk_proot
+    ;;
+  true|True|1|system)
+    install_rustdesk_system
+    ;;
+  *)
+    echo "Unknown RUSTDESK_INSTALL method: $RUSTDESK_INSTALL_METHOD"
+    echo "Valid options: proot, true/system"
+    exit 1
+    ;;
+esac
+

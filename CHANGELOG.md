@@ -21,6 +21,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.12] - 2026-01-22
+
+### Added 🆕
+- 🖥️ **RustDesk support**: New s6-overlay service for RustDesk remote desktop application
+  - Configurable via `RUSTDESK_INSTALL` env var (default: false)
+  - Two installation methods:
+    - `proot`: PRoot-based installation (isolated environment)
+    - `system` or `true`: System package installation via .deb file
+  - Supports x86_64, aarch64 (ARM64), and armv7 architectures
+  - Automatic dependency installation via gstreamer1.0-pipewire
+  - Downloads latest version from GitHub releases
+
+### Changed 🔄
+- 📝 **docker-compose.yaml**: Improved volume mount comments with clearer SUGGEST/EXAMPLE prefixes
+- 📂 **Projects directory**: Added `/mnt/data:/projects` volume mapping as example for project workspace
+
+### Documentation 📚
+- 📋 **workflow-analysis.txt**: Added GitHub Actions workflow analysis document with trigger and job information
+
+---
+
 ## [0.6.11] - 2026-01-22
 
 ### Added 🆕

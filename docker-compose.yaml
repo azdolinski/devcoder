@@ -58,9 +58,10 @@ services:
       NPM_PACKAGES: |
         @anthropic-ai/claude-code
     volumes:
-      - ./data/config:/config       # /config is default home directory for user abc (uid: 911)
-      - ./data/root:/root           # /root is default home directory for root (uid: 0)
-      - .:/mnt/self                 # self directory mounted to /mnt/self
+      - ./data/config:/config       # SUGGEST: /config is default home directory for user abc (uid: 911)
+      - ./data/root:/root           # EXAMPLE: /root is default home directory for root (uid: 0)
+      - .:/mnt/self                 # EXAMPLE: self directory mounted to /mnt/self
+      - /mnt/data:/projects         # EXAMPLE: map host projects to inside container to /projects
     tmpfs:
       - /var/cache
     networks:
