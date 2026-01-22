@@ -39,7 +39,7 @@ jobs:
               | head -1 \
               | awk '{print $2}' \
               | sed 's/refs\/tags\///' \
-              | tr -d '{}')
+              | tr -d '{}^')
             echo "TAG=$TAG" >> $GITHUB_OUTPUT
             echo "REF_NAME=$TAG" >> $GITHUB_OUTPUT
           else
