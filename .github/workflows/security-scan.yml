@@ -5,6 +5,8 @@ on:
     workflows: ["Build and Push Docker Image"]
     types:
       - completed
+    branches:
+      - main
   push:
     tags:
       - 'v*'
@@ -39,6 +41,11 @@ env:
 jobs:
   extract-version:
     runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch'
     outputs:
       version: ${{ steps.version.outputs.version }}
       image-ref: ${{ steps.version.outputs.image-ref }}
@@ -122,6 +129,7 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
+        continue-on-error: true
         with:
           image-ref: ${{ env.IMAGE_REF || needs.extract-version.outputs.image-ref }}
           format: 'sarif'
@@ -132,7 +140,7 @@ jobs:
           vuln-type: 'os,library'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        if: ${{ always() }}
+        if: hashFiles('trivy-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'
