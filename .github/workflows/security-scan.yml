@@ -185,7 +185,11 @@ jobs:
 
       - name: Normalize Snyk SARIF categories
         if: ${{ always() && steps.check-snyk.outputs.snyk_available == 'true' && hashFiles('snyk.sarif') != '' }}
+        env:
+          SCAN_ENV: ${{ github.event_name == 'pull_request' && 'pr' || 'prod' }}
+          SCAN_TAG: ${{ needs.extract-version.outputs.version }}
         run: |
+          export SARIF_PREFIX="${SCAN_ENV}-${SCAN_TAG}-$(date -u +'%Y-%m-%d-%H-%M')"
           python - <<'PY'
           import json
           import os
@@ -199,7 +203,7 @@ jobs:
           if not isinstance(runs, list):
             raise SystemExit(0)
 
-          prefix = os.getenv('GITHUB_RUN_ID', 'run')
+          prefix = os.getenv('SARIF_PREFIX') or os.getenv('GITHUB_RUN_ID', 'run')
 
           def sanitize(value: str) -> str:
             value = re.sub(r'[^A-Za-z0-9_.-]+', '-', str(value)).strip('-')
@@ -207,8 +211,7 @@ jobs:
 
           for i, run in enumerate(runs):
             run.setdefault('automationDetails', {})
-            base = run['automationDetails'].get('id') or run.get('tool', {}).get('driver', {}).get('name') or 'snyk'
-            run['automationDetails']['id'] = f"{sanitize(base)}-{prefix}-{i}"
+            run['automationDetails']['id'] = f"{sanitize(prefix)}-{i}"
 
           with open(path, 'w', encoding='utf-8') as f:
             json.dump(sarif, f)
