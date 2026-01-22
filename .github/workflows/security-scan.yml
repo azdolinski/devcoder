@@ -159,71 +159,53 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check for Snyk token
-        id: check-snyk
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Prepare image
+        if: ${{ secrets.SNYK_TOKEN != '' }}
         run: |
-          if [ -n "$SNYK_TOKEN" ]; then
-            echo "snyk_available=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Build image for Snyk scanning (for tags)
-        if: ${{ steps.check-snyk.outputs.snyk_available == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_run') && needs.extract-version.outputs.image-ref != '' }}
-        run: |
-          docker build -t ${{ needs.extract-version.outputs.image-ref }} .
+          if [ "${{ github.event_name }}" = "pull_request" ]; then IMAGE_REF=devcoder-test; else IMAGE_REF="${{ needs.extract-version.outputs.image-ref }}"; fi
+          if [ -z "$IMAGE_REF" ]; then echo "Missing image reference" >&2; exit 1; fi
+          echo "IMAGE_REF=$IMAGE_REF" >> $GITHUB_ENV
+          docker build -t "$IMAGE_REF" .
 
       - name: Run Snyk to check Docker image for vulnerabilities
-        if: steps.check-snyk.outputs.snyk_available == 'true'
+        if: ${{ secrets.SNYK_TOKEN != '' }}
         continue-on-error: true
         uses: snyk/actions/docker@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          image: ${{ needs.extract-version.outputs.image-ref }}
+          image: ${{ env.IMAGE_REF }}
           args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile --sarif-file-output=snyk-raw.sarif
 
       - name: Normalize Snyk SARIF categories
-        if: ${{ always() && steps.check-snyk.outputs.snyk_available == 'true' && hashFiles('snyk-raw.sarif') != '' }}
+        if: ${{ always() && secrets.SNYK_TOKEN != '' && hashFiles('snyk-raw.sarif') != '' }}
         env:
-          SCAN_ENV: ${{ github.event_name == 'pull_request' && 'pr' || 'prod' }}
-          SCAN_TAG: ${{ needs.extract-version.outputs.version }}
+          SARIF_PREFIX: snyk-${{ github.event_name == 'pull_request' && 'pr' || 'prod' }}-${{ needs.extract-version.outputs.version }}-${{ github.run_id }}
         run: |
-          export SARIF_PREFIX="${SCAN_ENV}-${SCAN_TAG}-$(date -u +'%Y-%m-%d-%H-%M')"
           python - <<'PY'
-          import json
-          import os
-          import re
-
-          src_path = 'snyk-raw.sarif'
-          dst_path = 'snyk.sarif'
-
-          with open(src_path, 'r', encoding='utf-8') as f:
-            sarif = json.load(f)
-
+          import json, os
+          sarif = json.load(open('snyk-raw.sarif', 'r', encoding='utf-8'))
           runs = sarif.get('runs')
-          if not isinstance(runs, list):
-            raise SystemExit(0)
-
-          prefix = os.getenv('SARIF_PREFIX') or os.getenv('GITHUB_RUN_ID', 'run')
-
-          def sanitize(value: str) -> str:
-            value = re.sub(r'[^A-Za-z0-9_.-]+', '-', str(value)).strip('-')
-            return (value[:80] or 'snyk')
-
-          for i, run in enumerate(runs):
-            run.setdefault('automationDetails', {})
-            run['automationDetails']['id'] = f"{sanitize(prefix)}-{i}"
-
-          with open(dst_path, 'w', encoding='utf-8') as f:
-            json.dump(sarif, f)
+          if not isinstance(runs, list) or not runs: raise SystemExit(0)
+          merged = runs[0]
+          merged.setdefault('results', [])
+          for run in runs[1:]:
+            results = run.get('results')
+            if isinstance(results, list): merged['results'].extend(results)
+          for res in merged['results']:
+            if isinstance(res, dict): res.pop('ruleIndex', None)
+          merged.setdefault('automationDetails', {})
+          merged['automationDetails']['id'] = os.getenv('SARIF_PREFIX', 'snyk')
+          sarif['runs'] = [merged]
+          json.dump(sarif, open('snyk.sarif', 'w', encoding='utf-8'))
           PY
 
       - name: Upload Snyk results to GitHub Security tab
-        if: ${{ always() && steps.check-snyk.outputs.snyk_available == 'true' && hashFiles('snyk.sarif') != '' }}
+        if: ${{ always() && secrets.SNYK_TOKEN != '' && hashFiles('snyk.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk.sarif
+          category: snyk-${{ github.event_name == 'pull_request' && 'pr' || 'prod' }}-${{ needs.extract-version.outputs.version }}-${{ github.run_id }}
 
   dockle-scan:
     runs-on: ubuntu-latest
