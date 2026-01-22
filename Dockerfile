@@ -15,6 +15,7 @@ RUN set -eux; \
       gnome-keyring \
       libsecret-1-0 \
       git \
+      gh \
       gdb \
       htop \
       dnsutils \
