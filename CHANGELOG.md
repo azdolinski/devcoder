@@ -21,6 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.15] - 2026-01-22
+
+### Fixed 🐛
+- 🔑 **SSHD key generation**: Fixed incorrect logic in SSH host key generation
+  - Removed unnecessary `rm -f /etc/ssh/ssh_host_*` that was deleting existing keys
+  - Now properly preserves existing SSH keys between container restarts
+  - `ssh-keygen -A` only generates missing keys, no interactive prompts
+  - Fixes "Overwrite (y/n)?" prompt that blocked container startup
+
+---
+
 ## [0.6.14] - 2026-01-22
 
 ### Added 🆕
