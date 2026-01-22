@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       image_ref:
-        description: 'Image reference to scan (e.g., ghcr.io/owner/repo:tag)'
+        description: 'Image reference to scan (e.g., ghcr.io/azdolinski/devcoder:v0.6.12)'
         required: false
         type: string
       severity:
@@ -182,6 +182,37 @@ jobs:
         with:
           image: ${{ needs.extract-version.outputs.image-ref }}
           args: --severity-threshold=${{ github.event.inputs.severity || 'medium' }} --file=Dockerfile --sarif-file-output=snyk.sarif
+
+      - name: Normalize Snyk SARIF categories
+        if: ${{ always() && steps.check-snyk.outputs.snyk_available == 'true' && hashFiles('snyk.sarif') != '' }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+
+          path = 'snyk.sarif'
+          with open(path, 'r', encoding='utf-8') as f:
+            sarif = json.load(f)
+
+          runs = sarif.get('runs')
+          if not isinstance(runs, list):
+            raise SystemExit(0)
+
+          prefix = os.getenv('GITHUB_RUN_ID', 'run')
+
+          def sanitize(value: str) -> str:
+            value = re.sub(r'[^A-Za-z0-9_.-]+', '-', str(value)).strip('-')
+            return (value[:80] or 'snyk')
+
+          for i, run in enumerate(runs):
+            run.setdefault('automationDetails', {})
+            base = run['automationDetails'].get('id') or run.get('tool', {}).get('driver', {}).get('name') or 'snyk'
+            run['automationDetails']['id'] = f"{sanitize(base)}-{prefix}-{i}"
+
+          with open(path, 'w', encoding='utf-8') as f:
+            json.dump(sarif, f)
+          PY
 
       - name: Upload Snyk results to GitHub Security tab
         if: ${{ always() && steps.check-snyk.outputs.snyk_available == 'true' && hashFiles('snyk.sarif') != '' }}
