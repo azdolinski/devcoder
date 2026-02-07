@@ -3,21 +3,21 @@
 source /etc/s6-overlay/s6-rc.d/echo_module.sh
 set_module_name "init-devcoder-syncthing"
 
-echo "▶️  Start Syncthing Installer"
+say "▶️  Start Syncthing Installer"
 
 SYNCTHING_ENABLED="${SYNCTHING_ENABLED:-false}"
 
 if [ "$SYNCTHING_ENABLED" != "true" ]; then
-    echo "◾ Syncthing disabled. Skipping installation."
+    say "◾ Syncthing disabled; skipping installation."
     exit 0
 fi
 
 if command -v syncthing >/dev/null 2>&1; then
-    echo "Syncthing already installed."
+    say "◾ Syncthing already installed."
     exit 0
 fi
 
-echo "Checking prerequisites..."
+say "Checking prerequisites..."
 # We need curl and gnupg for the setup below
 # Request via apt queue if missing
 PREREQS=""
@@ -29,23 +29,23 @@ if ! command -v gpg >/dev/null 2>&1; then
 fi
 
 if [ -n "$PREREQS" ]; then
-    echo "Requesting prerequisites: $PREREQS"
+    say "Requesting prerequisites: $PREREQS"
     echo_legacy "$PREREQS" >> /devcoder-apt-syncthing-pre.txt
     
     # Wait for prerequisites
-    echo "Waiting for prerequisites to be installed..."
+    say "Waiting for prerequisites to be installed..."
     count=0
     while ! command -v curl >/dev/null 2>&1 || ! command -v gpg >/dev/null 2>&1; do
         sleep 2
         count=$((count+2))
         if [ "$count" -gt 300 ]; then
-            echo "❌ Prerequisites (curl/gnupg) not found after 300s. Exiting."
+            say "❌ Prerequisites (curl/gnupg) not found after 300s. Exiting."
             exit 1
         fi
     done
 fi
 
-echo "Setting up Syncthing repository..."
+say "Setting up Syncthing repository..."
 mkdir -p /etc/apt/keyrings
 # Setup key and source
 if [ ! -f /etc/apt/keyrings/syncthing-archive-keyring.gpg ]; then
@@ -56,8 +56,8 @@ if [ ! -f /etc/apt/sources.list.d/syncthing.list ]; then
     echo_legacy "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" > /etc/apt/sources.list.d/syncthing.list
 fi
 
-echo "Requesting Syncthing package installation..."
+say "Requesting Syncthing package installation..."
 echo_legacy "syncthing" >> /devcoder-apt-syncthing.txt
 echo_legacy "python3-bcrypt" >> /devcoder-apt-syncthing.txt
 
-echo "✅ Syncthing setup initiated"
+say "✅ Syncthing setup initiated"

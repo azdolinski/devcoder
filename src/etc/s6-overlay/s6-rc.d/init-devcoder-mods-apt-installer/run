@@ -7,15 +7,15 @@ PKG_SCRIPT_VER="20260119"
 # Source the echo module
 source /etc/s6-overlay/s6-rc.d/echo_module.sh
 set_module_name "init-devcoder-mods-apt-installer"
-echo "▶️  Package install script version ${PKG_SCRIPT_VER}"
+say "▶️  Package install script version ${PKG_SCRIPT_VER}"
 
 if ! grep -Eq '^(ID|ID_LIKE)=.*(debian|ubuntu)' /etc/os-release; then
-    echo "Non-Debian/Ubuntu OS detected, skipping installer."
+    say "Non-Debian/Ubuntu OS detected, skipping installer."
     exit 0
 fi
 
 if [[ ! -x /usr/bin/apt-get ]]; then
-    echo "apt-get not available, skipping installer."
+    say "apt-get not available, skipping installer."
     exit 0
 fi
 
@@ -29,18 +29,18 @@ install_apt_packages() {
     local PACKAGES=("$@")
 
     if [[ ${#PACKAGES[@]} -ne 0 ]] && [[ ${PACKAGES[*]} != "" ]]; then
-        echo "Installing apt packages from ${SOURCE}"
-        echo "Packages: ${PACKAGES[*]}"
+        say "Installing apt packages from ${SOURCE}"
+        say "Packages: ${PACKAGES[*]}"
         export DEBIAN_FRONTEND="noninteractive"
         apt-get update
         if apt-get install -y --no-install-recommends \
             "${PACKAGES[@]}"; then
-            echo "Install status: success -> ${PACKAGES[*]}"
+            say "✅ Install status: success -> ${PACKAGES[*]}"
         else
-            echo "Install status: failed -> ${PACKAGES[*]}"
+say "❌ Install status: failed -> ${PACKAGES[*]}"
         fi
     else
-        echo "No packages defined in ${SOURCE}, skipping."
+        say "No packages defined in ${SOURCE}, skipping."
     fi
 }
 
@@ -66,7 +66,7 @@ listen_for_devcoder_apt_files() {
             ((idle_seconds++))
         fi
     done
-    echo "No /devcoder-apt-* files for 60 seconds, exiting listener."
+    say "No /devcoder-apt-* files for 60 seconds, exiting listener."
 }
 
 listen_for_devcoder_apt_files &

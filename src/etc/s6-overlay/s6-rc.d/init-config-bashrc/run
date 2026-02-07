@@ -9,7 +9,8 @@ source /etc/s6-overlay/s6-rc.d/echo_module.sh
 # Set module name once
 set_module_name "init-config-bashrc"
 
-echo "Starting init-config-bashrc"
+say "▶️  Starting init-config-bashrc"
+
 
 TARGET_USER="${CUSTOM_USER:-abc}"
 TARGET_HOME="/config"

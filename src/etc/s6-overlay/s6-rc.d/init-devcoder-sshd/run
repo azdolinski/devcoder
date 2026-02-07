@@ -2,34 +2,34 @@
 # shellcheck shell=bash
 source /etc/s6-overlay/s6-rc.d/echo_module.sh
 set_module_name "init-devcoder-sshd"
-echo "▶️  Start service"
+say "▶️  Start service"
 
 SSHD_PORT="${SSHD_PORT:-}"
 
 if [ -z "$SSHD_PORT" ]; then
-  echo "SSHD_PORT not set. Skipping SSHD startup."
+  say "◾ SSHD_PORT not set; skipping SSHD startup."
   exit 0
 fi
 
 if ! printf '%s' "$SSHD_PORT" | grep -Eq '^[0-9]+$'; then
-  echo "SSHD_PORT is not numeric. Skipping SSHD startup."
+  say "⚠️  SSHD_PORT is not numeric; skipping SSHD startup."
   exit 0
 fi
 
 if [ "$SSHD_PORT" -lt 1 ] || [ "$SSHD_PORT" -gt 65535 ]; then
-  echo "SSHD_PORT out of range (1-65535). Skipping SSHD startup."
+  say "⚠️  SSHD_PORT out of range (1-65535); skipping SSHD startup."
   exit 0
 fi
 
-echo "SSHD_PORT: $SSHD_PORT"
+say "SSHD_PORT: $SSHD_PORT"
 
-echo "**** Adding openssh-server to package install list ****"
+say "**** Adding openssh-server to package install list ****"
 echo_legacy "openssh-server" >> /devcoder-apt-openssh-server.txt
 
 waited=0
 while ! command -v sshd >/dev/null 2>&1; do
   if (( waited >= 60 )); then
-    echo "⚠️  openssh-server not available after 60 seconds."
+    say "⚠️  openssh-server not available after 60 seconds."
     exit 0
   fi
   sleep 1
@@ -42,7 +42,7 @@ done
 waited=0
 while ! id sshd >/dev/null 2>&1; do
   if (( waited >= 30 )); then
-    echo "⚠️  sshd user not created after 30 seconds."
+    say "⚠️  sshd user not created after 30 seconds."
     exit 1
   fi
   sleep 1
@@ -56,4 +56,4 @@ fi
 
 
 mkdir -p /run/sshd
-echo "✅ SSHD environment prepared. Service will start via svc-devcoder-sshd."
+say "✅ SSHD environment prepared. Service will start via svc-devcoder-sshd."

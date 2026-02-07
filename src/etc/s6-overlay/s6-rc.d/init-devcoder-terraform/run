@@ -3,15 +3,15 @@
 source /etc/s6-overlay/s6-rc.d/echo_module.sh
 set_module_name "init-devcoder-terraform"
 
-echo "▶️  Start installer"
+say "▶️  Start terraform installer"
 
-if [ "${TERRAFORM_INSTALL,,}" != "true" ]; then
-    echo "**** TERRAFORM_INSTALL not enabled, skipping terraform setup ****"
+if [ "${INSTALL_TERRAFORM,,}" != "true" ]; then
+    say "◾ INSTALL_TERRAFORM not enabled; skipping terraform setup."
     exit 0
 fi
 
 if [ ! -f "/etc/apt/sources.list.d/hashicorp.list" ]; then
-    echo "**** Adding terraform packages to install list ****"
+    say "**** Adding terraform packages to install list ****"
     
     # Clean up potentially bad previous run artifacts
     rm -f /usr/share/keyrings/hashicorp.gpg
@@ -41,11 +41,11 @@ if [ ! -f "/etc/apt/sources.list.d/hashicorp.list" ]; then
         CODENAME="bookworm" 
     fi
 
-    echo "Detected settings for Terraform: Arch=$ARCH, Codename=$CODENAME"
+    say "Detected settings for Terraform: Arch=$ARCH, Codename=$CODENAME"
 
     echo_legacy "deb [arch=${ARCH} signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com ${CODENAME} main" > /etc/apt/sources.list.d/hashicorp.list
     echo_legacy "terraform" >> /devcoder-apt-packages-terraform.txt
     echo_legacy "hashicorp.terraform" >> /devcoder-codium-ext-terraform.txt
 else
-    echo "◾ Terraform packages already installed, skipping ****"
+    say "◾ Terraform packages already installed; skipping."
 fi

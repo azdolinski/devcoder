@@ -9,7 +9,7 @@ SYNCTHING_HOME="${SYNCTHING_HOME:-/config/syncthing}"
 SYNCTHING_DATA="${SYNCTHING_DATA:-/config/syncthing/data}"
 
 if [ "$SYNCTHING_ENABLED" != "true" ]; then
-    echo "◾ Syncthing disabled. Stopping service."
+    echo "◾ Syncthing disabled; stopping service."
     s6-svc -d /run/service/svc-devcoder-syncthing
     exit 0
 fi
@@ -31,7 +31,7 @@ PGID=${PGID:-1000}
 chown -R "$PUID:$PGID" "$SYNCTHING_HOME"
 
 # Wait for syncthing binary (installed by init-devcoder-mods-apt-installer)
-echo "Waiting for syncthing binary..."
+echo "⏳ Waiting for syncthing binary..."
 count=0
 while ! command -v syncthing >/dev/null 2>&1; do
     sleep 2
@@ -44,7 +44,7 @@ done
 
 # Setup Password if provided
 if [ -n "$SYNCTHING_PASSWORD" ]; then
-    echo "Configuring Syncthing GUI password..."
+    echo "🔐 Configuring Syncthing GUI password..."
     
     # Generate config if missing
     if [ ! -f "$SYNCTHING_HOME/config.xml" ]; then
@@ -99,7 +99,7 @@ except Exception as e:
     chown "$PUID:$PGID" "$SYNCTHING_HOME/config.xml"
 fi
 
-echo "Starting Syncthing..."
+echo "▶️  Starting Syncthing..."
 exec s6-setuidgid abc syncthing \
     -home="$SYNCTHING_HOME" \
     -gui-address="0.0.0.0:8384" \

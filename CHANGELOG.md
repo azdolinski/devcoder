@@ -5,19 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.0] - 2026-02-07
 
 ### Added 🆕
--
+- 📚 **Documentation**: Complete ENV variable reference in README.md
+  - Added "Other ENV Defaults" section with all system and service variables
+  - Documented PUID/PGID, ROOT_PASSWORD, ABC_PASSWORD, S6_MERMAID
+  - Added service-specific sections for SSHD, NGROK, SYNCTHING, RustDesk
+  - Clarified all timeout and configuration values
 
 ### Fixed 🐛
--
+- 🔧 **RustDesk installation**: Fixed dpkg skip-if-same-version issue
+  - Added `-E` flag to `dpkg -i` command to skip reinstallation of same version
+  - Reduces "dpkg installation failed" errors during container restarts
+- 📦 **Node.js dependencies**: Updated NodeSource repository setup for improved key management
 
 ### Changed 🔄
--
+- ⬆️ **Node.js default version**: Bumped NODEJS_MOD_VERSION from 16 to 24
+  - Fixes deprecated SHA1 signing key issues with Node.js 16.x
+  - Uses new NodeSource GPG key format
+  - Maintains compatibility with current npm packages
+- 🔐 **SSHD initialization**: Improved SSH key handling with ABC_PASSWORD support
+- 📝 **Logging consistency**: Standardized logging output across all init scripts
+  - Added emoji indicators for better log readability (▶️, ◾, 📦, ⚠️)
+  - Improved start/skip messaging for all installer modules
+- 🗑️ **Removed .env.example**: Deleted obsolete example file in favor of inline documentation
 
 ### Security 🔒
--
+- 🔑 **NodeSource keys**: Updated to new GPG key format after 2026-02-01 deprecation
 
 ---
 

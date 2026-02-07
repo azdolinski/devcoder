@@ -1,5 +1,16 @@
 FROM lscr.io/linuxserver/vscodium:latest
 
+# Remove broken NodeSource repository (expired SHA1-signed key) and add updated one
+RUN if [ -f /etc/apt/sources.list.d/nodesource.list ]; then \
+        rm -f /etc/apt/sources.list.d/nodesource.list; \
+    fi && \
+    if [ -f /etc/apt/trusted.gpg.d/nodesource.gpg ]; then \
+        rm -f /etc/apt/trusted.gpg.d/nodesource.gpg; \
+    fi && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
+
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
@@ -20,6 +31,7 @@ RUN set -eux; \
       htop \
       dnsutils \
       net-tools \
+      iputils-ping \
       mc \
       nano \
       xz-utils \

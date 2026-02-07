@@ -83,6 +83,15 @@ init-devcoder-codium-extensions/
 **User Bundle:**
 Services to start are defined in `src/etc/s6-overlay/s6-rc.d/user/contents.d/` - empty files that list which services run.
 
+**Logging Module (`echo_module.sh`):**
+All services use a shared logging module for consistent output:
+```bash
+source /etc/s6-overlay/s6-rc.d/echo_module.sh
+set_module_name "my-service"
+say "message"  # outputs: [my-service] message
+```
+When `DEBUG_DEVCODER=true`, logs are also written to `/var/log/<service>.log`.
+
 ### Environment Variable Configuration
 
 DevCoder uses ENV vars to replace LinuxServer Docker Mods. Key mappings:
@@ -94,12 +103,36 @@ DevCoder uses ENV vars to replace LinuxServer Docker Mods. Key mappings:
 | SSH Port | `SSHD_PORT` | (empty = disabled) |
 | HTTP Auth User | `CUSTOM_USER` | abc |
 | HTTP Auth Password | `PASSWORD` | (required) |
-| Codium Extensions | `CODIUM_EXTENSIONS` | See docker-compose.yaml |
-| NPM Packages | `NPM_PACKAGES` | `@anthropic-ai/claude-code` |
-| PIP3 Packages | `PIP3_SYSTEM_PACKAGES` | `pandas` |
+| Codium Extensions | `INSTALL_CODIUM_EXTENSIONS` | See docker-compose.yaml |
+| NPM Packages | `INSTALL_NPM_PACKAGES` | `@anthropic-ai/claude-code` |
+| PIP3 Packages | `INSTALL_PIP3_PACKAGES` | `pandas` |
 | Syncthing | `SYNCTHING_ENABLED` | false (was true in v0.6.7) |
-| Terraform | `TERRAFORM_INSTALL` | false |
-| Golang | `GOLANG_INSTALL` | false |
+| Terraform | `INSTALL_TERRAFORM` | false |
+| Golang | `INSTALL_GOLANG` | false |
+| APT Packages | `APT_PACKAGES` | (empty) |
+
+### Dynamic Package Installation System
+
+DevCoder supports dynamic package installation via file-based triggers during the first 60 seconds of container startup. Other services can create trigger files that are picked up by installers.
+
+**`/devcoder-apt-*` Files (APT Packages)**
+- Created by any service to request APT package installation
+- Processed by `init-devcoder-mods-apt-installer`
+- File format: one package per line or space-separated
+- Example from `init-devcoder-nodejs`: creates `/devcoder-apt-nodejs.txt` containing `nodejs yarn`
+
+**`/devcoder-codium-ext-*` Files (Codium Extensions)**
+- Created at runtime to install VSCodium extensions
+- Processed by `init-devcoder-codium-extensions`
+- File format: extension IDs (space/newline/comma separated)
+- Example: `echo "ms-python.python vscodevim.vim" > /devcoder-codium-ext-custom`
+
+**How It Works:**
+1. Service creates a trigger file (e.g., `/devcoder-apt-nodejs.txt`)
+2. Installer service detects file (polls for 60 seconds after startup)
+3. Installer reads packages, runs `apt-get install -y --no-install-recommends`
+4. Trigger file is deleted after processing
+5. Idle timer resets; if no files for 60s, listener exits
 
 **File-based Configuration:**
 - `/devcoder-apt-*` files in container root for APT package installation
@@ -113,7 +146,7 @@ DevCoder uses ENV vars to replace LinuxServer Docker Mods. Key mappings:
 **User Data:** Stored in `$HOME/.codium` (not `/config`)
 
 **Extension Installation:**
-- During container init: from `CODIUM_EXTENSIONS` ENV
+- During container init: from `INSTALL_CODIUM_EXTENSIONS` ENV
 - At runtime: by creating `/devcoder-codium-ext-*` files (listens for 60s after startup)
 
 ### GitHub Actions Environments

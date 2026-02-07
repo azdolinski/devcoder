@@ -7,13 +7,13 @@ source /etc/s6-overlay/s6-rc.d/echo_module.sh
 # Set module name once
 set_module_name "init-devcoder-pip3"
 
-echo "▶️  Start installer"
+say "▶️  Start pip3 installer"
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 
-ENV_PIP3_SYSTEM_PACKAGES=""
-FILE_PIP3_SYSTEM_PACKAGES=""
-PIP3_SYSTEM_PACKAGES_TO_INSTALL=""
+ENV_INSTALL_PIP3_PACKAGES=""
+FILE_INSTALL_PIP3_PACKAGES=""
+INSTALL_PIP3_PACKAGES_TO_INSTALL=""
 
 run_as_root() {
   if [ "$(id -u)" = "0" ]; then
@@ -53,10 +53,10 @@ run_as_user() {
   "$@"
 }
 
-if [ -n "${PIP3_SYSTEM_PACKAGES:-}" ]; then
-  ENV_PIP3_SYSTEM_PACKAGES="${PIP3_SYSTEM_PACKAGES//\"/}"
-  ENV_PIP3_SYSTEM_PACKAGES="${ENV_PIP3_SYSTEM_PACKAGES//,/ }"
-  PIP3_SYSTEM_PACKAGES_TO_INSTALL="$PIP3_SYSTEM_PACKAGES_TO_INSTALL $ENV_PIP3_SYSTEM_PACKAGES"
+if [ -n "${INSTALL_PIP3_PACKAGES:-}" ]; then
+  ENV_INSTALL_PIP3_PACKAGES="${INSTALL_PIP3_PACKAGES//\"/}"
+  ENV_INSTALL_PIP3_PACKAGES="${ENV_INSTALL_PIP3_PACKAGES//,/ }"
+  INSTALL_PIP3_PACKAGES_TO_INSTALL="$INSTALL_PIP3_PACKAGES_TO_INSTALL $ENV_INSTALL_PIP3_PACKAGES"
 fi
 
 TARGET_USER="${CUSTOM_USER:-abc}"
@@ -70,35 +70,35 @@ fi
 
 PIP3_CONFIG_FILE="/config/pip3-system.txt"
 if [ -f "$PIP3_CONFIG_FILE" ]; then
-  FILE_PIP3_SYSTEM_PACKAGES=$(parse_config_file "$PIP3_CONFIG_FILE")
-  PIP3_SYSTEM_PACKAGES_TO_INSTALL="$PIP3_SYSTEM_PACKAGES_TO_INSTALL $FILE_PIP3_SYSTEM_PACKAGES"
+  FILE_INSTALL_PIP3_PACKAGES=$(parse_config_file "$PIP3_CONFIG_FILE")
+  INSTALL_PIP3_PACKAGES_TO_INSTALL="$INSTALL_PIP3_PACKAGES_TO_INSTALL $FILE_INSTALL_PIP3_PACKAGES"
 fi
 
-if [ -z "$PIP3_SYSTEM_PACKAGES_TO_INSTALL" ]; then
-  echo "No PIP3_SYSTEM_PACKAGES configured; skipping."
+if [ -z "$INSTALL_PIP3_PACKAGES_TO_INSTALL" ]; then
+  say "◾ No INSTALL_PIP3_PACKAGES configured; skipping."
   exit 0
 fi
 
-PIP3_SYSTEM_PACKAGES_TO_INSTALL=$(printf "%s" "$PIP3_SYSTEM_PACKAGES_TO_INSTALL" | tr ',\n\r\t' '    ' | xargs)
-echo "Installing pip3 system packages: $PIP3_SYSTEM_PACKAGES_TO_INSTALL"
+INSTALL_PIP3_PACKAGES_TO_INSTALL=$(printf "%s" "$INSTALL_PIP3_PACKAGES_TO_INSTALL" | tr ',\n\r\t' '    ' | xargs)
+say "📦 Installing pip3 system packages: $INSTALL_PIP3_PACKAGES_TO_INSTALL"
 
 # Configure pip to allow system packages
 mkdir -p ~/.config/pip
 printf "[global]\nbreak-system-packages = true\n" > ~/.config/pip/pip.conf
-echo "✅ pip configured to allow system packages"
+say "✅ pip configured to allow system packages"
 
 if ! command -v pip3 >/dev/null 2>&1; then
-  echo "⚠️  pip3 not found; skipping pip3 installs."
+  say "⚠️  pip3 not found; skipping pip3 installs."
   exit 0
 fi
 
-for pkg in $PIP3_SYSTEM_PACKAGES_TO_INSTALL; do
+for pkg in $INSTALL_PIP3_PACKAGES_TO_INSTALL; do
   if pip3 show "$pkg" >/dev/null 2>&1; then
-    echo "◾  $pkg is already installed, skipping..."
+    say "◾  $pkg is already installed, skipping..."
   else
-    echo "pip3 install $pkg"
+    say "pip3 install $pkg"
     if ! run_as_user pip3 install "$pkg"; then
-      echo "⚠️ warn: failed to install $pkg (continuing)" >&2
+      say "⚠️ warn: failed to install $pkg (continuing)" >&2
     fi
   fi
 done

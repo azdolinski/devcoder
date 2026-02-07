@@ -7,7 +7,7 @@ source /etc/s6-overlay/s6-rc.d/echo_module.sh
 # Set module name once
 set_module_name "init-chown-config"
 
-echo "Starting init-chown-config"
+say "▶️  Starting init-chown-config"
 
 # Use PUID from environment or default to 0 (root)
 PUID="${PUID:-0}"
@@ -17,7 +17,7 @@ CONFIG_DIR="/config"
 # Determine if we should run chown
 # Only run if PUID or PGID is set and different from current owner
 if [ ! -d "$CONFIG_DIR" ]; then
-    echo "Creating /config directory"
+    say "Creating /config directory"
     mkdir -p "$CONFIG_DIR"
 fi
 
@@ -26,27 +26,27 @@ CURRENT_OWNER=$(stat -c '%u:%g' "$CONFIG_DIR" 2>/dev/null || echo "0:0")
 DESIRED_OWNER="${PUID}:${PGID}"
 
 if [ "$CURRENT_OWNER" != "$DESIRED_OWNER" ]; then
-    echo "Changing ownership of /config from $CURRENT_OWNER to $DESIRED_OWNER"
+    say "Changing ownership of /config from $CURRENT_OWNER to $DESIRED_OWNER"
     chown -R "$PUID":"$PGID" "$CONFIG_DIR"
-    echo "Ownership changed successfully"
+    say "✅ Ownership changed successfully"
 else
-    echo "Ownership of /config is already correct: $CURRENT_OWNER"
+    say "Ownership of /config is already correct: $CURRENT_OWNER"
 fi
 
 # Set root password if ROOT_PASSWORD is defined and not empty
 ROOT_PASSWORD="${ROOT_PASSWORD:-}"
 if [ -n "$ROOT_PASSWORD" ]; then
-    echo "Setting root password"
+    say "Setting root password"
     echo_legacy "root:$ROOT_PASSWORD" | chpasswd
-    echo "Root password set successfully"
+    say "✅ Root password set successfully"
 fi
 
 # Set abc user password if ABC_PASSWORD is defined and not empty
 ABC_PASSWORD="${ABC_PASSWORD:-}"
 if [ -n "$ABC_PASSWORD" ]; then
-    echo "Setting abc user password"
+    say "Setting abc user password"
     echo_legacy "abc:$ABC_PASSWORD" | chpasswd
-    echo "Abc user password set successfully"
+    say "✅ Abc user password set successfully"
 fi
 
-echo "Completed init-chown-config"
+say "✅ Completed init-chown-config"

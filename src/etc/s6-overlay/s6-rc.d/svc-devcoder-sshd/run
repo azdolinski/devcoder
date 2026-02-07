@@ -6,14 +6,14 @@ SSHD_PERMITROOTLOGIN="${SSHD_PERMITROOTLOGIN:-false}"
 
 
 if [ -z "$SSHD_PORT" ]; then
-  echo "◾ SSHD_PORT not set. Stopping service."
+  echo "◾ SSHD_PORT not set; stopping service."
   s6-svc -d /run/service/svc-devcoder-sshd
   exit 0
 fi
 
 # Double check numeric again in case environment changed, though unlikely for s6 service
 if ! printf '%s' "$SSHD_PORT" | grep -Eq '^[0-9]+$'; then
-   echo "◾ SSHD_PORT not numeric. Stopping service."
+   echo "⚠️  SSHD_PORT not numeric; stopping service."
    s6-svc -d /run/service/svc-devcoder-sshd
    exit 0
 fi
@@ -22,7 +22,7 @@ fi
 mkdir -p /run/sshd
 
 if [ ! -x /usr/sbin/sshd ]; then
-  echo "SSHD binary not found. Stopping service."
+  echo "❌ SSHD binary not found; stopping service."
   s6-svc -d /run/service/svc-devcoder-sshd
   exit 0
 fi

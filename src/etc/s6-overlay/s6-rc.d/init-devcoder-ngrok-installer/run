@@ -5,16 +5,16 @@ set -euo pipefail
 source /etc/s6-overlay/s6-rc.d/echo_module.sh
 set_module_name "init-devcoder-ngrok-installer"
 
-echo "▶️  Start installer"
+say "▶️  Start ngrok installer"
 
 NGROK_BIN="${NGROK_BIN:-$(command -v ngrok 2>/dev/null || true)}"
 NGROK_BIN="${NGROK_BIN:-/usr/local/bin/ngrok}"
 NGROK_PORT="${NGROK_PORT:-3000}"
 
-rm -f "$HOME/ngrok-url.txt" 2>/dev/null || true
+rm -f /var/log/ngrok.url 2>/dev/null || true
 
 if [ -z "${NGROK_AUTHTOKEN:-}" ]; then
-  echo "NGROK_AUTHTOKEN not set. Skipping ngrok installation."
+  say "◾ NGROK_AUTHTOKEN not set; skipping ngrok installation."
   exit 0
 fi
 
@@ -44,7 +44,7 @@ install_ngrok_repo() {
 }
 
 request_ngrok_install() {
-  echo "**** Adding ngrok to package install list ****"
+  say "**** Adding ngrok to package install list ****"
   echo_legacy "ngrok" >> /devcoder-apt-ngrok.txt
 }
 
@@ -52,7 +52,7 @@ wait_for_ngrok() {
   local waited=0
   while ! command -v ngrok >/dev/null 2>&1; do
     if (( waited >= 60 )); then
-      echo "⚠️  ngrok not available after 60 seconds."
+      say "⚠️  ngrok not available after 60 seconds."
       return 1
     fi
     sleep 1
@@ -62,19 +62,19 @@ wait_for_ngrok() {
 }
 
 if ! command -v ngrok >/dev/null 2>&1; then
-  echo "Installing ngrok via apt repository..."
+  say "Installing ngrok via apt repository..."
   install_ngrok_repo
   request_ngrok_install
-  echo "Waiting for ngrok to be installed..."
+  say "Waiting for ngrok to be installed..."
   wait_for_ngrok || exit 0
   NGROK_BIN="$(command -v ngrok 2>/dev/null || echo "$NGROK_BIN")"
 fi
 
-echo "Using ngrok binary: $NGROK_BIN"
+say "Using ngrok binary: $NGROK_BIN"
 mkdir -p "$HOME/logs"
 rm -f "$HOME/logs/ngrok.log"
 
 run_as_root "$NGROK_BIN" authtoken "$NGROK_AUTHTOKEN"
 
-echo "✅ Ngrok setup complete"
+say "✅ Ngrok setup complete"
 exit 0

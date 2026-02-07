@@ -3,7 +3,7 @@
 source /etc/s6-overlay/s6-rc.d/echo_module.sh
 set_module_name "init-devcoder-codium-extensions"
 
-echo "▶️  Start installer"
+say "▶️  Start codium extensions installer"
 
 BIN=/usr/share/codium/bin/codium
 
@@ -11,14 +11,14 @@ BIN=/usr/share/codium/bin/codium
 EXTENSIONS_TO_INSTALL=""
 
 if [[ ! -x "$BIN" ]]; then
-  echo "Extension Installer: codium binary not found: $BIN" >&2
+  say "❌ Extension Installer: codium binary not found: $BIN" >&2
   exit 1
 fi
 
-if [ -n "${CODIUM_EXTENSIONS:-}" ]; then
-  echo "Found extensions in environment variable:"
-  echo "${CODIUM_EXTENSIONS}"
-  CLEANED_EXTENSIONS=$(printf "%s" "${CODIUM_EXTENSIONS}" | tr '\n' ' ')
+if [ -n "${INSTALL_CODIUM_EXTENSIONS:-}" ]; then
+  say "Found extensions in environment variable:"
+  say "${INSTALL_CODIUM_EXTENSIONS}"
+  CLEANED_EXTENSIONS=$(printf "%s" "${INSTALL_CODIUM_EXTENSIONS}" | tr '\n' ' ')
   CLEANED_EXTENSIONS="${CLEANED_EXTENSIONS//\"/}"
   CLEANED_EXTENSIONS="${CLEANED_EXTENSIONS//,/ }"
   CLEANED_EXTENSIONS=$(printf "%s" "${CLEANED_EXTENSIONS}" | sed -e 's/[[:space:]]\+/ /g' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
@@ -48,23 +48,23 @@ install_extensions() {
     return
   fi
 
-  echo "Final extensions to install from ${source}:"
-  echo "$extensions_string"
+  say "Final extensions to install from ${source}:"
+  say "$extensions_string"
   IFS=' ' read -ra EXTENSIONS <<< "$extensions_string"
 
   FORCE_FLAG=""
-  if [ "${CODIUM_EXTENSIONS_FORCE:-}" = "true" ] || [ "${CODIUM_EXTENSIONS_FORCE:-}" = "True" ]; then
+  if [ "${INSTALL_CODIUM_EXTENSIONS_FORCE:-}" = "true" ] || [ "${INSTALL_CODIUM_EXTENSIONS_FORCE:-}" = "True" ]; then
     FORCE_FLAG="--force"
-    echo "Force flag enabled for extension installations"
+    say "Force flag enabled for extension installations"
   fi
 
   for ext in "${EXTENSIONS[@]}"; do
     if [ -n "$ext" ]; then
-      echo "Installing extension: $ext"
+      say "Installing extension: $ext"
       output=$(s6-setuidgid abc codium --user-data-dir /config \
                   --extensions-dir=/config/.vscode-oss/extensions \
                   --install-extension "$ext" $FORCE_FLAG 2>&1)
-      echo "$output" | sed 's/ is already installed\..*/ is already installed./'
+      say "$output" | sed 's/ is already installed\..*/ is already installed./'
     fi
   done
 }
@@ -88,7 +88,7 @@ listen_for_devcoder_extension_files() {
       ((idle_seconds++))
     fi
   done
-  echo "No /devcoder-codium-ext-* files for 60 seconds, exiting listener."
+  say "No /devcoder-codium-ext-* files for 60 seconds, exiting listener."
 }
 
 EXTENSIONS_TO_INSTALL=$(sanitize_extensions "$EXTENSIONS_TO_INSTALL")

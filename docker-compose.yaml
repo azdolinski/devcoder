@@ -31,17 +31,14 @@ services:
       SSHD_PORT: ${SSHD_PORT:-}                           # SSHD port - default off - set port to enable
       #NO_DECOR: true                               # If true -> the application will run without window borders for use as a PWA. (Decor can be enabled and disabled with Ctrl+Shift+d)
       #PIXELFLUX_WAYLAND: true                      # Enable Wayland support - only with GPU
-      DOCKER_MODS: |
-        linuxserver/mods:universal-package-install
-        linuxserver/mods:universal-docker-in-docker
-      # -- init-mods-universal-package-install --
-      INSTALL_PACKAGES: |
+      #DOCKER_MODS: |
+      #  linuxserver/mods:universal-package-install
+      #  linuxserver/mods:universal-docker-in-docker
+      INSTALL_APT_PACKAGES: |
         libfuse2
-      # -- init-devcoder-pip3-system-installer --
-      PIP3_SYSTEM_PACKAGES: |
+      INSTALL_PIP3_PACKAGES: |
         pandas
-      # -- init-devcoder-vscode-extensions --
-      CODIUM_EXTENSIONS: |
+      INSTALL_CODIUM_EXTENSIONS: |
         vscode-icons-team.vscode-icons
         ms-azuretools.vscode-docker
         ms-python.python
@@ -55,8 +52,9 @@ services:
         anthropic.claude-code
         mermaidchart.vscode-mermaid-chart
       # -- init-devcoder-npm-installer --
-      NPM_PACKAGES: |
+      INSTALL_NPM_PACKAGES: |
         @anthropic-ai/claude-code
+        openclaw@latest
     volumes:
       - ./data/config:/config       # SUGGEST: /config is default home directory for user abc (uid: 911)
       - ./data/root:/root           # EXAMPLE: /root is default home directory for root (uid: 0)

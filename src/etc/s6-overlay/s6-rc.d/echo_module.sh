@@ -1,22 +1,18 @@
 #!/usr/bin/env bash
 
-# Reusable echo module with module name prefix
+# Reusable logging module with module name prefix
 # Usage:
 #   source /path/to/echo_module.sh
 #   set_module_name "my-module"
-#   echo "message"  # outputs: [my-module] message
+#   say "message"  # outputs: [my-module] message
+#   echo "text" > file  # normal echo for file output
 
 MODULE_ECHO_NAME=""
 DEBUG_DEVCODER="${DEBUG_DEVCODER:-false}"
 if [ -n "${DEVCODER_LOG_DIR:-}" ]; then
     LOG_DIR="${DEVCODER_LOG_DIR}"
 else
-    CALLER_SOURCE="${BASH_SOURCE[1]:-}"
-    if [ -n "$CALLER_SOURCE" ]; then
-        LOG_DIR="$(cd "$(dirname "$CALLER_SOURCE")" && pwd)/logs"
-    else
-        LOG_DIR="$HOME/logs"
-    fi
+    LOG_DIR="/var/log"
 fi
 
 if [ "${DEBUG_DEVCODER,,}" = "true" ]; then
@@ -28,8 +24,8 @@ set_module_name() {
     MODULE_ECHO_NAME="$1"
 }
 
-# Override the echo command to include module name prefix
-echo() {
+# Logging function with module name prefix - use for log messages
+say() {
     local MESSAGE=""
     if [ -n "$MODULE_ECHO_NAME" ]; then
         MESSAGE="[$MODULE_ECHO_NAME] $*"
