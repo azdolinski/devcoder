@@ -1,8 +1,5 @@
 FROM lscr.io/linuxserver/vscodium:latest
 
-# Note: NodeSource repository is already configured by the base image
-# If you need to update Node.js version, modify NODEJS_MOD_VERSION in docker-compose.yaml
-
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
@@ -29,10 +26,6 @@ RUN set -eux; \
       xz-utils \
       unzip; \
     rm -rf /var/lib/apt/lists/*;
-
-#ENV TMPDIR=/config/tmp
-#RUN mkdir -p /config/tmp && chmod 1777 /config/tmp && \
-#    rm -rf /tmp && ln -s /config/tmp /tmp
 
 COPY ./src /
 RUN chmod +x /usr/bin/codium && \
