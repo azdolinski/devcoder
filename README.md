@@ -83,4 +83,15 @@ SYNCTHING_PASSWORD=	                          # Syncthing GUI password
 RUSTDESK_INSTALL=false                        # Possible values: false/proot/system
 ```
 
+#### OpenClaw
+```bash
+INSTALL_OPENCLAW=false                        # Set to "true" to install OpenClaw AI Gateway
+OPENCLAW_PORT=18789                           # Gateway port
+OPENCLAW_BIND=loopback                        # Bind address: loopback, lan, tailnet, auto
+OPENCLAW_TOKEN=                               # Optional: authentication token
+OPENCLAW_PASSWORD=                            # Optional: authentication password
+OPENCLAW_VERBOSE=false                        # Enable verbose logging
+```
+
+OpenClaw is a personal, open-source AI assistant. When enabled, it installs via npm and runs a gateway service. Requires `openclaw onboard` to be run first to create configuration.
 

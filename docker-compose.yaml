@@ -54,7 +54,7 @@ services:
       # -- init-devcoder-npm-installer --
       INSTALL_NPM_PACKAGES: |
         @anthropic-ai/claude-code
-        openclaw@latest
+      INSTALL_OPENCLAW: true
     volumes:
       - ./data/config:/config       # SUGGEST: /config is default home directory for user abc (uid: 911)
       - ./data/root:/root           # EXAMPLE: /root is default home directory for root (uid: 0)

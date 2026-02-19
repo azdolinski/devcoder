@@ -1,0 +1,97 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+source /etc/s6-overlay/s6-rc.d/echo_module.sh
+set_module_name "svc-devcoder-openclaw"
+
+say "▶️  Starting OpenClaw Gateway service"
+
+# Get target user info - use PUID to find the actual user
+PUID="${PUID:-911}"
+PGID="${PGID:-911}"
+
+# Find the user with this UID
+TARGET_USER=$(getent passwd "$PUID" | cut -d: -f1)
+if [ -z "$TARGET_USER" ]; then
+  # Fallback to abc
+  TARGET_USER="abc"
+fi
+
+TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
+TARGET_UID=$(id -u "$TARGET_USER")
+
+say "👤 Running as user: $TARGET_USER (UID: $TARGET_UID, HOME: $TARGET_HOME)"
+
+# Add NVM to PATH - it may be in different versions
+# Check both /config/.nvm and $TARGET_HOME/.nvm
+NVM_DIR="$TARGET_HOME/.nvm"
+if [ ! -d "$NVM_DIR" ] && [ -d "/config/.nvm" ]; then
+  NVM_DIR="/config/.nvm"
+fi
+
+if [ -d "$NVM_DIR/versions/node" ]; then
+  # Find the latest node version
+  NODE_VERSION_DIR=$(find "$NVM_DIR/versions/node" -maxdepth 1 -type d ! -name node | sort -V | tail -1)
+  if [ -n "$NODE_VERSION_DIR" ] && [ -d "$NODE_VERSION_DIR/bin" ]; then
+    export PATH="$NODE_VERSION_DIR/bin:$PATH"
+    export NVM_DIR="$NVM_DIR"
+    say "✅ Added NVM Node.js to PATH: $NODE_VERSION_DIR"
+  fi
+fi
+
+# Check if openclaw is installed
+if ! command -v openclaw >/dev/null 2>&1; then
+  say "⚠️  openclaw command not found; stopping service."
+  say "   PATH=$PATH"
+  exit 0
+fi
+
+# Check if ~/.openclaw folder exists (indicates onboard/initialization done)
+# Check both locations
+OPENCLAW_DIR="$TARGET_HOME/.openclaw"
+if [ ! -d "$OPENCLAW_DIR" ] && [ -d "/config/.openclaw" ]; then
+  OPENCLAW_DIR="/config/.openclaw"
+fi
+
+if [ ! -d "$OPENCLAW_DIR" ]; then
+  say "◾ OpenClaw not initialized ($OPENCLAW_DIR missing); run 'openclaw onboard' first."
+  exit 0
+fi
+
+say "✅ OpenClaw configuration found at $OPENCLAW_DIR"
+
+# Gateway configuration
+OPENCLAW_PORT="${OPENCLAW_PORT:-18789}"
+OPENCLAW_BIND="${OPENCLAW_BIND:-loopback}"
+
+# Build command args
+GATEWAY_ARGS="--port $OPENCLAW_PORT --bind $OPENCLAW_BIND"
+
+# Add auth if configured
+if [ -n "${OPENCLAW_TOKEN:-}" ]; then
+  GATEWAY_ARGS="$GATEWAY_ARGS --token $OPENCLAW_TOKEN"
+  say "🔒 Using token authentication"
+elif [ -n "${OPENCLAW_PASSWORD:-}" ]; then
+  GATEWAY_ARGS="$GATEWAY_ARGS --password $OPENCLAW_PASSWORD"
+  say "🔒 Using password authentication"
+fi
+
+# Allow running without gateway.mode=local set (for dev environments)
+if [ "${OPENCLAW_ALLOW_UNCONFIGURED:-true}" = "true" ]; then
+  GATEWAY_ARGS="$GATEWAY_ARGS --allow-unconfigured"
+fi
+
+# Verbose logging if requested
+if [ "${OPENCLAW_VERBOSE:-false}" = "true" ]; then
+  GATEWAY_ARGS="$GATEWAY_ARGS --verbose"
+fi
+
+say "🚀 Starting OpenClaw Gateway on port $OPENCLAW_PORT..."
+say "   Command: openclaw gateway $GATEWAY_ARGS"
+
+# Run the gateway (foreground, s6-overlay will manage it)
+# Use s6-setuidgid with UID directly
+if [ "$(id -u)" = "$TARGET_UID" ]; then
+  exec openclaw gateway $GATEWAY_ARGS
+else
+  exec s6-setuidgid "$TARGET_UID" openclaw gateway $GATEWAY_ARGS
+fi

@@ -1,0 +1,5 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+# Optional: wait for other services to be ready
+# For example, if openclaw needs network or other dependencies

@@ -181,6 +181,17 @@ if [ -n "$NVM_DIR" ] && [ -d "$NVM_DIR/versions/node" ]; then
 fi
 
 
+# Filter out openclaw - it should be installed via init-devcoder-openclaw instead
+if [ -n "$INSTALL_NPM_PACKAGES_TO_INSTALL" ]; then
+  INSTALL_NPM_PACKAGES_TO_INSTALL=$(echo "$INSTALL_NPM_PACKAGES_TO_INSTALL" | tr ' ' '\n' | grep -v '^openclaw' | grep -v '^openclaw@' | tr '\n' ' ' | xargs)
+  if [ -z "$INSTALL_NPM_PACKAGES_TO_INSTALL" ]; then
+    say "◾ No NPM packages to install (openclaw filtered out, use INSTALL_OPENCLAW=true)."
+    exit 0
+  fi
+fi
+
+say "📦 Installing npm packages: $INSTALL_NPM_PACKAGES_TO_INSTALL"
+
 for pkg in $INSTALL_NPM_PACKAGES_TO_INSTALL; do
   if run_as_user npm list -g "$pkg" >/dev/null 2>&1; then
     say "$pkg is already installed, skipping..."

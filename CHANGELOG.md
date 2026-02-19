@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-02-19
+
+### Added 🆕
+- 🤖 **OpenClaw AI Gateway integration**: New dedicated init and svc components
+  - Added `INSTALL_OPENCLAW` ENV to enable OpenClaw installation via npm
+  - Added `OPENCLAW_PORT`, `OPENCLAW_BIND`, `OPENCLAW_TOKEN`, `OPENCLAW_PASSWORD`, `OPENCLAW_VERBOSE` configuration options
+  - Added `init-devcoder-openclaw` service for installing openclaw@latest globally
+  - Added `svc-devcoder-openclaw` service for running the OpenClaw gateway
+  - OpenClaw automatically detects NVM Node.js installations across versions
+  - Automatic cleanup of broken OpenClaw installations before reinstall
+  - `openclaw@latest` is now filtered from `INSTALL_NPM_PACKAGES` to prevent conflicts
+
+### Fixed 🐛
+- 🔧 **NVM PATH detection**: Fixed openclaw binary not found issue
+  - Services now dynamically detect NVM Node.js version directories
+  - Falls back to `/config/.nvm` when user home .nvm doesn't exist
+  - Uses PUID/PGID to correctly identify target user instead of CUSTOM_USER
+
+### Changed 🔄
+- 📝 **Documentation**: Updated CLAUDE.md and README.md with OpenClaw configuration
+
 ## [0.7.0] - 2026-02-07
 
 ### Added 🆕

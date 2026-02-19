@@ -1,0 +1,141 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+source /etc/s6-overlay/s6-rc.d/echo_module.sh
+set_module_name "init-devcoder-openclaw"
+
+say "▶️  Start openclaw installer"
+
+# Check if openclaw installation is requested
+if [ "${INSTALL_OPENCLAW:-}" != "true" ]; then
+  say "◾ INSTALL_OPENCLAW not set to true; skipping."
+  exit 0
+fi
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+
+# Get target user info
+TARGET_USER="${CUSTOM_USER:-abc}"
+if id "$TARGET_USER" >/dev/null 2>&1; then
+  TARGET_UID=$(id -u "$TARGET_USER")
+  TARGET_GID=$(id -g "$TARGET_USER")
+  TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
+else
+  TARGET_UID=911
+  TARGET_GID=911
+  TARGET_HOME="$HOME"
+fi
+
+# Add NVM to PATH - it may be in different versions
+NVM_DIR="$TARGET_HOME/.nvm"
+if [ -d "$NVM_DIR/versions/node" ]; then
+  # Find the latest node version
+  NODE_VERSION_DIR=$(find "$NVM_DIR/versions/node" -maxdepth 1 -type d ! -name node | sort -V | tail -1)
+  if [ -n "$NODE_VERSION_DIR" ] && [ -d "$NODE_VERSION_DIR/bin" ]; then
+    export PATH="$NODE_VERSION_DIR/bin:$PATH"
+    export NVM_DIR="$NVM_DIR"
+    say "✅ Added NVM Node.js to PATH: $NODE_VERSION_DIR"
+  fi
+fi
+
+run_as_root() {
+  if [ "$(id -u)" = "0" ]; then
+    "$@"
+    return
+  fi
+  if command -v sudo >/dev/null 2>&1; then
+    /usr/bin/sudo -E "$@"
+    return
+  fi
+  if command -v su >/dev/null 2>&1; then
+    su -s /bin/bash root -c "$(printf '%q ' "$@")"
+    return
+  fi
+  "$@"
+}
+
+run_as_user() {
+  if id "$TARGET_USER" >/dev/null 2>&1; then
+    if [ "$(id -u)" = "$(id -u "$TARGET_USER")" ]; then
+      "$@"
+      return
+    fi
+    if command -v sudo >/dev/null 2>&1; then
+      /usr/bin/sudo -E -u "$TARGET_USER" env PATH="$PATH" NVM_DIR="$NVM_DIR" "$@"
+      return
+    fi
+    if command -v su >/dev/null 2>&1; then
+      su -s /bin/bash "$TARGET_USER" -c "$(printf '%q ' "$@")"
+      return
+    fi
+    if command -v s6-setuidgid >/dev/null 2>&1; then
+      s6-setuidgid "$TARGET_USER" "$@"
+      return
+    fi
+  fi
+  "$@"
+}
+
+wait_for_npm() {
+  local waited=0
+  say "⏳ Waiting for npm to become available..."
+  while ! command -v npm >/dev/null 2>&1; do
+    if (( waited >= 60 )); then
+      say "⚠️  npm not available after 60 seconds."
+      return 1
+    fi
+    sleep 1
+    ((waited++))
+  done
+  say "✅ npm is available"
+  return 0
+}
+
+install_openclaw() {
+  say "📦 Installing openclaw@latest globally..."
+
+  if run_as_user npm install -g openclaw@latest; then
+    say "✅ OpenClaw installation command completed"
+    return 0
+  else
+    say "⚠️  OpenClaw installation failed"
+    return 1
+  fi
+}
+
+verify_openclaw() {
+  local waited=0
+  say "🔍 Verifying openclaw installation..."
+  while (( waited < 60 )); do
+    if command -v openclaw >/dev/null 2>&1; then
+      local version
+      version=$(openclaw --version 2>/dev/null || echo "unknown")
+      say "✅ OpenClaw installed: version $version"
+      return 0
+    fi
+    sleep 1
+    ((waited++))
+  done
+  say "⚠️  OpenClaw not detected after 60 seconds."
+  return 1
+}
+
+# Main execution
+wait_for_npm || exit 1
+
+# Clean up any broken openclaw installation BEFORE attempting install
+say "🧹 Checking for broken openclaw installation..."
+if [ -d "$NVM_DIR/versions/node" ]; then
+  for node_dir in "$NVM_DIR/versions/node"/v*; do
+    if [ -d "$node_dir/lib/node_modules/openclaw" ]; then
+      say "🧹 Removing broken openclaw from $node_dir"
+      run_as_root rm -rf "$node_dir/lib/node_modules/openclaw"
+    fi
+    run_as_root rm -rf "$node_dir/lib/node_modules/.openclaw-"* 2>/dev/null || true
+  done
+fi
+
+install_openclaw || exit 1
+verify_openclaw || exit 1
+
+say "🎉 OpenClaw setup complete"
+exit 0

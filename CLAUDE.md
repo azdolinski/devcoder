@@ -65,11 +65,12 @@ Services are located in `src/etc/s6-overlay/s6-rc.d/`:
 
 **Key Services:**
 - `init-chown-config`: Sets `/config` ownership based on `PUID`/`PGID` environment variables
-- `init-devcoder-*`: Various feature installers (codium-extensions, nodejs, pip3, golang, terraform, syncthing, sshd)
+- `init-devcoder-*`: Various feature installers (codium-extensions, nodejs, pip3, golang, terraform, syncthing, sshd, openclaw)
 - `init-devcoder-mods`: Orchestrates all mod installers
 - `svc-devcoder-syncthing`: Syncthing file synchronization service
 - `svc-devcoder-sshd`: SSH server
 - `svc-devcoder-ngrok`: Ngrok tunneling
+- `svc-devcoder-openclaw`: OpenClaw AI Gateway service (runs `openclaw gateway`)
 
 **Service Dependencies:**
 Services can depend on each other using `dependencies.d/` files. Example:
@@ -109,6 +110,9 @@ DevCoder uses ENV vars to replace LinuxServer Docker Mods. Key mappings:
 | Syncthing | `SYNCTHING_ENABLED` | false (was true in v0.6.7) |
 | Terraform | `INSTALL_TERRAFORM` | false |
 | Golang | `INSTALL_GOLANG` | false |
+| OpenClaw | `INSTALL_OPENCLAW` | false |
+| OpenClaw Port | `OPENCLAW_PORT` | 18789 |
+| OpenClaw Bind | `OPENCLAW_BIND` | loopback |
 | APT Packages | `APT_PACKAGES` | (empty) |
 
 ### Dynamic Package Installation System
@@ -206,3 +210,40 @@ data/                            # Persistent volumes (not in git)
 ### Docker-in-Docker
 
 Requires `privileged: true` in docker-compose.yaml. Not fully migrated from LinuxServer mods yet.
+
+### OpenClaw Integration
+
+[OpenClaw](https://github.com/openclaw/openclaw) is a personal, open-source AI assistant that can be self-hosted.
+
+**Installation:**
+
+Set `INSTALL_OPENCLAW=true` to install the OpenClaw CLI globally via npm.
+
+```yaml
+environment:
+  - INSTALL_OPENCLAW=true
+```
+
+**Configuration:**
+
+After installation, OpenClaw requires initialization (`openclaw onboard`) which creates the `~/.openclaw` directory with configuration. The `svc-devcoder-openclaw` service will only start the gateway once this directory exists.
+
+```yaml
+environment:
+  - INSTALL_OPENCLAW=true
+  - OPENCLAW_PORT=18789        # Gateway port (default: 18789)
+  - OPENCLAW_BIND=lan          # Bind address: loopback, lan, tailnet, auto
+  - OPENCLAW_TOKEN=xxx         # Optional: authentication token
+  - OPENCLAW_PASSWORD=xxx      # Optional: authentication password
+  - OPENCLAW_VERBOSE=true      # Optional: enable verbose logging
+```
+
+**Services:**
+
+- `init-devcoder-openclaw`: Installs OpenClaw globally via npm (oneshot)
+- `svc-devcoder-openclaw`: Runs the OpenClaw gateway (longrun)
+
+**Gateway Access:**
+
+Once running, the Control UI is available at `http://<host>:18789/` (or configured port).
+
