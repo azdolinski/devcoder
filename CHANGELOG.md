@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8.0] - 2026-02-19
 
 ### Added 🆕
+- 🍺 **Homebrew package manager integration**: New init service for Homebrew installation
+  - Added `INSTALL_HOMEBREW` ENV to enable Homebrew installation (non-root, per-user)
+  - Installs Homebrew to `$HOME/.linuxbrew/` with automatic PATH setup in `.bashrc`
+  - Requires dependencies: build-essential, procps, curl, file, git
+  - Non-interactive installation using official Homebrew install script
 - 🤖 **OpenClaw AI Gateway integration**: New dedicated init and svc components
   - Added `INSTALL_OPENCLAW` ENV to enable OpenClaw installation via npm
   - Added `OPENCLAW_PORT`, `OPENCLAW_BIND`, `OPENCLAW_TOKEN`, `OPENCLAW_PASSWORD`, `OPENCLAW_VERBOSE` configuration options

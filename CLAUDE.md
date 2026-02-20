@@ -112,6 +112,7 @@ DevCoder uses ENV vars to replace LinuxServer Docker Mods. Key mappings:
 | Golang | `INSTALL_GOLANG` | false |
 | OpenClaw | `INSTALL_OPENCLAW` | false |
 | OpenClaw Port | `OPENCLAW_PORT` | 18789 |
+| Homebrew | `INSTALL_HOMEBREW` | false |
 | OpenClaw Bind | `OPENCLAW_BIND` | loopback |
 | APT Packages | `APT_PACKAGES` | (empty) |
 
@@ -246,4 +247,34 @@ environment:
 **Gateway Access:**
 
 Once running, the Control UI is available at `http://<host>:18789/` (or configured port).
+
+### Homebrew Integration
+
+[Homebrew](https://brew.sh/) is the missing package manager for Linux.
+
+**Installation:**
+
+Set `INSTALL_HOMEBREW=true` to install Homebrew.
+
+```yaml
+environment:
+  - INSTALL_HOMEBREW=true
+```
+
+**Usage:**
+
+Homebrew is installed to `$HOME/.linuxbrew/` and is automatically added to PATH in new shell sessions. To use immediately:
+
+```bash
+eval "\$(\$HOME/.linuxbrew/bin/brew shellenv)"
+```
+
+**Important:**
+- Homebrew runs as non-root user (required by installer)
+- Install dependencies: build-essential, procps, curl, file, git
+- Homebrew binaries are installed to `$HOME/.linuxbrew/bin/`
+
+**Services:**
+
+- `init-devcoder-homebrew`: Installs Homebrew as non-root user (oneshot)
 

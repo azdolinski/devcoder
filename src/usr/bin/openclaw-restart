@@ -1,0 +1,8 @@
+#!/bin/bash
+# Restart OpenClaw AI Gateway
+
+echo "Restarting OpenClaw AI Gateway..."
+
+s6-rc -d change svc-devcoder-openclaw
+s6-rc -u change svc-devcoder-openclaw
+s6-svstat /run/service/svc-devcoder-openclaw

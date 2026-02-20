@@ -55,6 +55,7 @@ services:
       INSTALL_NPM_PACKAGES: |
         @anthropic-ai/claude-code
       INSTALL_OPENCLAW: true
+      INSTALL_HOMEBREW: false  # Set to "true" to install Homebrew package manager
     volumes:
       - ./data/config:/config       # SUGGEST: /config is default home directory for user abc (uid: 911)
       - ./data/root:/root           # EXAMPLE: /root is default home directory for root (uid: 0)
